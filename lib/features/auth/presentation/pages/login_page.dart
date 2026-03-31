@@ -120,172 +120,181 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(34),
-                            topRight: Radius.circular(34),
-                            bottomLeft: Radius.circular(34),
-                            bottomRight: Radius.circular(34)),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          isKeyboardOpen ? 22 : (isSmall ? 28 : 25),
-                          horizontalPadding,
-                          isKeyboardOpen ? 18 : 28,
+                          topLeft: Radius.circular(34),
+                          topRight: Radius.circular(34),
+                          bottomLeft: Radius.circular(34),
+                          bottomRight: Radius.circular(34),
                         ),
-                        child: Form(
-                          key: _formKey,
-                          autovalidateMode: _submitted
-                              ? AutovalidateMode.onUserInteraction
-                              : AutovalidateMode.disabled,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Bienvenido',
-                                style: TextStyle(
-                                  fontSize: isSmall ? 32 : 25,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF181A20),
-                                  height: 1.0,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: cardMinHeight),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            isKeyboardOpen ? 22 : (isSmall ? 28 : 25),
+                            horizontalPadding,
+                            isKeyboardOpen ? 18 : 28,
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            autovalidateMode: _submitted
+                                ? AutovalidateMode.onUserInteraction
+                                : AutovalidateMode.disabled,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.max,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bienvenido',
+                                  style: TextStyle(
+                                    fontSize: isSmall ? 32 : 25,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF181A20),
+                                    height: 1.0,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: isKeyboardOpen ? 8 : 10),
-                              const Text(
-                                'Inicia sesión para continuar',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF8B90A0),
-                                  fontWeight: FontWeight.w400,
+                                SizedBox(height: isKeyboardOpen ? 8 : 10),
+                                const Text(
+                                  'Inicia sesión para continuar',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF8B90A0),
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(
+                                SizedBox(
                                   height: isKeyboardOpen
                                       ? 14
-                                      : (isSmall ? 24 : 20)),
-                              _CustomTextField(
-                                focusNode: _emailFocusNode,
-                                controller: _emailController,
-                                hintText: 'Correo electrónico',
-                                prefixIcon: Icons.mail_outline_rounded,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                validator: (value) {
-                                  final text = value?.trim() ?? '';
-                                  if (text.isEmpty) {
-                                    return 'Ingresa tu correo';
-                                  }
-                                  final emailRegex =
-                                      RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
-                                  if (!emailRegex.hasMatch(text)) {
-                                    return 'Correo no válido';
-                                  }
-                                  return null;
-                                },
-                                onFieldSubmitted: (_) {
-                                  FocusScope.of(context)
-                                      .requestFocus(_passwordFocusNode);
-                                },
-                              ),
-                              SizedBox(height: isKeyboardOpen ? 8 : 8),
-                              _CustomTextField(
-                                focusNode: _passwordFocusNode,
-                                controller: _passwordController,
-                                hintText: 'Contraseña',
-                                prefixIcon: Icons.lock_outline_rounded,
-                                obscureText: _obscurePassword,
-                                textInputAction: TextInputAction.done,
-                                suffixIcon: IconButton(
-                                  splashRadius: 20,
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
+                                      : (isSmall ? 24 : 20),
+                                ),
+                                _CustomTextField(
+                                  focusNode: _emailFocusNode,
+                                  controller: _emailController,
+                                  hintText: 'Correo electrónico',
+                                  prefixIcon: Icons.mail_outline_rounded,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  validator: (value) {
+                                    final text = value?.trim() ?? '';
+                                    if (text.isEmpty) {
+                                      return 'Ingresa tu correo';
+                                    }
+                                    final emailRegex =
+                                        RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+                                    if (!emailRegex.hasMatch(text)) {
+                                      return 'Correo no válido';
+                                    }
+                                    return null;
                                   },
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: const Color(0xFF9AA0A6),
-                                  ),
+                                  onFieldSubmitted: (_) {
+                                    FocusScope.of(context)
+                                        .requestFocus(_passwordFocusNode);
+                                  },
                                 ),
-                                validator: (value) {
-                                  final text = value?.trim() ?? '';
-                                  if (text.isEmpty) {
-                                    return 'Ingresa tu contraseña';
-                                  }
-                                  if (text.length < 6) {
-                                    return 'Mínimo 6 caracteres';
-                                  }
-                                  return null;
-                                },
-                                onFieldSubmitted: (_) => _submit(),
-                              ),
-                              SizedBox(height: isKeyboardOpen ? 0 : 4),
-                              if (!isKeyboardOpen)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () {},
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: const Color(0xFF2D4ECF),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: isKeyboardOpen ? 2 : 4,
-                                      ),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: Text(
-                                      '¿Olvidaste tu contraseña?',
-                                      style: TextStyle(
-                                        fontSize: isKeyboardOpen ? 13 : 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                const SizedBox(height: 8),
+                                _CustomTextField(
+                                  focusNode: _passwordFocusNode,
+                                  controller: _passwordController,
+                                  hintText: 'Contraseña',
+                                  prefixIcon: Icons.lock_outline_rounded,
+                                  obscureText: _obscurePassword,
+                                  textInputAction: TextInputAction.done,
+                                  suffixIcon: IconButton(
+                                    splashRadius: 20,
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      color: const Color(0xFF9AA0A6),
                                     ),
                                   ),
+                                  validator: (value) {
+                                    final text = value?.trim() ?? '';
+                                    if (text.isEmpty) {
+                                      return 'Ingresa tu contraseña';
+                                    }
+                                    if (text.length < 6) {
+                                      return 'Mínimo 6 caracteres';
+                                    }
+                                    return null;
+                                  },
+                                  onFieldSubmitted: (_) => _submit(),
                                 ),
-                              SizedBox(height: isKeyboardOpen ? 10 : 28),
-                              SizedBox(height: isKeyboardOpen ? 4 : 28),
-                              SizedBox(
-                                width: double.infinity,
-                                height: isKeyboardOpen ? 54 : 58,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      authState.isLoading ? null : _submit,
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: 0,
-                                    backgroundColor: const Color(0xFF2D4ECF),
-                                    foregroundColor: Colors.white,
-                                    disabledBackgroundColor:
-                                        const Color(0xFF2D4ECF)
-                                            .withOpacity(0.65),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  child: authState.isLoading
-                                      ? const SizedBox(
-                                          width: 22,
-                                          height: 22,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.4,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Ingresar',
-                                          style: TextStyle(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                SizedBox(height: isKeyboardOpen ? 2 : 4),
+                                if (!isKeyboardOpen)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            const Color(0xFF2D4ECF),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 4,
                                         ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text(
+                                        '¿Olvidaste tu contraseña?',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                const Spacer(),
+                                SizedBox(height: isKeyboardOpen ? 10 : 18),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: isKeyboardOpen ? 54 : 58,
+                                  child: ElevatedButton(
+                                    onPressed:
+                                        authState.isLoading ? null : _submit,
+                                    style: ElevatedButton.styleFrom(
+                                      elevation: 0,
+                                      backgroundColor:
+                                          const Color(0xFF2D4ECF),
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor:
+                                          const Color(0xFF2D4ECF)
+                                              .withOpacity(0.65),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                    child: authState.isLoading
+                                        ? const SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.4,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                            ),
+                                          )
+                                        : const Text(
+                                            'Ingresar',
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

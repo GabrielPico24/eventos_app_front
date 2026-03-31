@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:event_app/core/config/env.dart';
+import 'package:event_app/core/providers/app_providers.dart';
 import 'package:event_app/features/auth/data/datasource/users_remote_datasource.dart';
 import 'package:event_app/features/auth/data/repositories/users_repository.dart';
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
@@ -8,40 +12,41 @@ class UsersState {
   final bool isLoading;
   final bool isCreating;
   final bool isUpdating;
+  final bool isDeleting;
   final String? errorMessage;
   final List<UserModel> users;
-final bool isDeleting;
+
   const UsersState({
     this.isLoading = false,
     this.isCreating = false,
     this.isUpdating = false,
+    this.isDeleting = false,
     this.errorMessage,
     this.users = const [],
-    this.isDeleting = false,
   });
 
   UsersState copyWith({
     bool? isLoading,
     bool? isCreating,
     bool? isUpdating,
+    bool? isDeleting,
     String? errorMessage,
     List<UserModel>? users,
-    bool? isDeleting,
   }) {
     return UsersState(
       isLoading: isLoading ?? this.isLoading,
       isCreating: isCreating ?? this.isCreating,
       isUpdating: isUpdating ?? this.isUpdating,
+      isDeleting: isDeleting ?? this.isDeleting,
       errorMessage: errorMessage,
       users: users ?? this.users,
-      isDeleting: isDeleting ?? this.isDeleting,
     );
   }
 }
 
 final usersRemoteDataSourceProvider = Provider<UsersRemoteDataSource>((ref) {
   return UsersRemoteDataSource(
-    baseUrl: 'http://192.168.200.10:3000',
+    baseUrl: Env.baseUrl,
   );
 });
 
@@ -55,43 +60,94 @@ class UsersController extends StateNotifier<UsersState> {
   final Ref ref;
   final UsersRepository repository;
 
-  UsersController(this.ref, this.repository) : super(const UsersState());
+  bool _socketInitialized = false;
 
-Future<void> loadUsers() async {
-  try {
-    final authState = ref.read(authControllerProvider);
-    final token = authState.token;
-
-    if (token == null || token.isEmpty) {
-      throw Exception('No existe token de sesión');
-    }
-
-    state = state.copyWith(
-      isLoading: true,
-      errorMessage: null,
-    );
-
-    final users = await repository.getUsers(token: token);
-
-    final currentUserEmail =
-        (authState.email ?? '').trim().toLowerCase();
-
-    final filteredUsers = users.where((user) {
-      final userEmail = user.email.trim().toLowerCase();
-      return userEmail != currentUserEmail;
-    }).toList();
-
-    state = state.copyWith(
-      isLoading: false,
-      users: filteredUsers,
-    );
-  } catch (e) {
-    state = state.copyWith(
-      isLoading: false,
-      errorMessage: e.toString().replaceFirst('Exception: ', ''),
-    );
+  UsersController(this.ref, this.repository) : super(const UsersState()) {
+    _initSocketListeners();
   }
+
+void _initSocketListeners() {
+  if (_socketInitialized) return;
+
+  final socketService = ref.read(socketServiceProvider);
+
+  socketService.off('user:created');
+  socketService.off('user:updated');
+  socketService.off('user:deleted');
+
+  socketService.on('user:created', (data) {
+    try {
+      print('📥 socket user:created => $data');
+      final user = UserModel.fromJson(Map<String, dynamic>.from(data));
+      _onUserCreated(user);
+    } catch (e) {
+      print('❌ error en user:created => $e');
+    }
+  });
+
+  socketService.on('user:updated', (data) {
+    try {
+      print('📥 socket user:updated => $data');
+      final user = UserModel.fromJson(Map<String, dynamic>.from(data));
+      _onUserUpdated(user);
+    } catch (e) {
+      print('❌ error en user:updated => $e');
+    }
+  });
+
+  socketService.on('user:deleted', (data) {
+    try {
+      print('📥 socket user:deleted => $data');
+      final map = Map<String, dynamic>.from(data);
+      final id = map['id']?.toString();
+      if (id != null && id.isNotEmpty) {
+        _onUserDeleted(id);
+      }
+    } catch (e) {
+      print('❌ error en user:deleted => $e');
+    }
+  });
+
+  print('✅ Listeners de usuarios registrados');
+  _socketInitialized = true;
 }
+
+  Future<void> loadUsers() async {
+    try {
+      _initSocketListeners();
+
+      final authState = ref.read(authControllerProvider);
+      final token = authState.token;
+
+      if (token == null || token.isEmpty) {
+        throw Exception('No existe token de sesión');
+      }
+
+      state = state.copyWith(
+        isLoading: true,
+        errorMessage: null,
+      );
+
+      final users = await repository.getUsers(token: token);
+
+      final currentUserEmail = (authState.email ?? '').trim().toLowerCase();
+
+      final filteredUsers = users.where((user) {
+        final userEmail = user.email.trim().toLowerCase();
+        return userEmail != currentUserEmail;
+      }).toList();
+
+      state = state.copyWith(
+        isLoading: false,
+        users: filteredUsers,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
 
   Future<void> createUser({
     required String name,
@@ -112,7 +168,7 @@ Future<void> loadUsers() async {
         errorMessage: null,
       );
 
-      final createdUser = await repository.createUser(
+      await repository.createUser(
         token: token,
         name: name,
         email: email,
@@ -123,7 +179,6 @@ Future<void> loadUsers() async {
 
       state = state.copyWith(
         isCreating: false,
-        users: [createdUser, ...state.users],
       );
     } catch (e) {
       state = state.copyWith(
@@ -154,7 +209,7 @@ Future<void> loadUsers() async {
         errorMessage: null,
       );
 
-      final updatedUser = await repository.updateUser(
+      await repository.updateUser(
         token: token,
         id: id,
         name: name,
@@ -164,14 +219,8 @@ Future<void> loadUsers() async {
         isActive: isActive,
       );
 
-      final updatedList = state.users.map((user) {
-        if (user.id == id) return updatedUser;
-        return user;
-      }).toList();
-
       state = state.copyWith(
         isUpdating: false,
-        users: updatedList,
       );
     } catch (e) {
       state = state.copyWith(
@@ -182,56 +231,115 @@ Future<void> loadUsers() async {
     }
   }
 
-Future<void> deleteUser({
-  required String id,
-}) async {
-  try {
+  Future<void> deleteUser({
+    required String id,
+  }) async {
+    try {
+      final authState = ref.read(authControllerProvider);
+      final token = authState.token;
+      final currentUserEmail = (authState.email ?? '').trim().toLowerCase();
+
+      if (token == null || token.isEmpty) {
+        throw Exception('No existe token de sesión');
+      }
+
+      final userToDelete = state.users.cast<UserModel?>().firstWhere(
+        (user) => user?.id == id,
+        orElse: () => null,
+      );
+
+      if (userToDelete != null &&
+          userToDelete.email.trim().toLowerCase() == currentUserEmail) {
+        throw Exception('No puedes eliminar tu propio usuario');
+      }
+
+      state = state.copyWith(
+        isDeleting: true,
+        errorMessage: null,
+      );
+
+      await repository.deleteUser(
+        token: token,
+        id: id,
+      );
+
+      state = state.copyWith(
+        isDeleting: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isDeleting: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      rethrow;
+    }
+  }
+
+  void _onUserCreated(UserModel user) {
     final authState = ref.read(authControllerProvider);
-    final token = authState.token;
-    final currentUserEmail =
-        (authState.email ?? '').trim().toLowerCase();
+    final currentUserEmail = (authState.email ?? '').trim().toLowerCase();
+    final userEmail = user.email.trim().toLowerCase();
 
-    if (token == null || token.isEmpty) {
-      throw Exception('No existe token de sesión');
-    }
+    if (userEmail == currentUserEmail) return;
 
-    final userToDelete = state.users.cast<UserModel?>().firstWhere(
-      (user) => user?.id == id,
-      orElse: () => null,
-    );
-
-    if (userToDelete != null &&
-        userToDelete.email.trim().toLowerCase() == currentUserEmail) {
-      throw Exception('No puedes eliminar tu propio usuario');
-    }
+    final alreadyExists = state.users.any((u) => u.id == user.id);
+    if (alreadyExists) return;
 
     state = state.copyWith(
-      isDeleting: true,
-      errorMessage: null,
+      users: [user, ...state.users],
     );
+  }
 
-    await repository.deleteUser(
-      token: token,
-      id: id,
+  void _onUserUpdated(UserModel updatedUser) {
+    final authState = ref.read(authControllerProvider);
+    final currentUserEmail = (authState.email ?? '').trim().toLowerCase();
+    final updatedEmail = updatedUser.email.trim().toLowerCase();
+
+    if (updatedEmail == currentUserEmail) {
+      state = state.copyWith(
+        users: state.users.where((u) => u.id != updatedUser.id).toList(),
+      );
+      return;
+    }
+
+    final exists = state.users.any((u) => u.id == updatedUser.id);
+
+    if (!exists) {
+      state = state.copyWith(
+        users: [updatedUser, ...state.users],
+      );
+      return;
+    }
+
+    final updatedList = state.users.map((user) {
+      if (user.id == updatedUser.id) return updatedUser;
+      return user;
+    }).toList();
+
+    state = state.copyWith(
+      users: updatedList,
     );
+  }
 
+  void _onUserDeleted(String id) {
     final updatedList = state.users.where((user) => user.id != id).toList();
 
     state = state.copyWith(
-      isDeleting: false,
       users: updatedList,
     );
-  } catch (e) {
-    state = state.copyWith(
-      isDeleting: false,
-      errorMessage: e.toString().replaceFirst('Exception: ', ''),
-    );
-    rethrow;
   }
-}
 
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  @override
+  void dispose() {
+    final socket = ref.read(socketServiceProvider).socket;
+    socket?.off('user:created');
+    socket?.off('user:updated');
+    socket?.off('user:deleted');
+    super.dispose();
   }
 }
 

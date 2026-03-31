@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:event_app/features/auth/data/datasource/auth_remote_datasource.dart';
+import 'package:event_app/core/config/env.dart';
+import 'package:event_app/core/providers/app_providers.dart';
+import 'package:event_app/core/services/socket_service.dart';
 import 'package:event_app/features/auth/data/repositories/auth_repository.dart';
 
 enum UserRole { admin, user }
@@ -44,12 +46,6 @@ class AuthState {
   }
 }
 
-final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
-  return AuthRemoteDataSource(
-    baseUrl: 'http://192.168.200.10:3000',
-  );
-});
-
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
     remoteDataSource: ref.read(authRemoteDataSourceProvider),
@@ -58,8 +54,12 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 class AuthController extends StateNotifier<AuthState> {
   final AuthRepository repository;
+  final SocketService socketService;
 
-  AuthController(this.repository) : super(const AuthState());
+  AuthController(
+    this.repository,
+    this.socketService,
+  ) : super(const AuthState());
 
   Future<void> login({
     required String email,
@@ -80,6 +80,15 @@ class AuthController extends StateNotifier<AuthState> {
         password: password,
       );
 
+      print('LOGIN OK, VOY A CONECTAR SOCKET');
+      print('TOKEN LOGIN => ${response.token}');
+      print('BASE URL => ${Env.baseUrl}');
+
+      socketService.connect(
+        baseUrl: Env.baseUrl,
+        token: response.token,
+      );
+
       final role = response.user.role == 'admin'
           ? UserRole.admin
           : UserRole.user;
@@ -93,11 +102,19 @@ class AuthController extends StateNotifier<AuthState> {
         email: response.user.email,
       );
     } catch (e) {
+      print('ERROR EN LOGIN => $e');
+
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
     }
+  }
+
+  void logout() {
+    print('CERRANDO SOCKET...');
+    socketService.disconnect();
+    state = const AuthState();
   }
 
   void clearError() {
@@ -107,5 +124,8 @@ class AuthController extends StateNotifier<AuthState> {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(ref.read(authRepositoryProvider));
+  return AuthController(
+    ref.read(authRepositoryProvider),
+    ref.read(socketServiceProvider),
+  );
 });

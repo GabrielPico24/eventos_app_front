@@ -70,9 +70,9 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+  return StatefulBuilder(
+    builder: (modalContext, setModalState) {
+            final bottomInset = MediaQuery.of(modalContext).viewInsets.bottom;
             final usersState = ref.watch(usersControllerProvider);
 
             return Padding(
@@ -271,99 +271,75 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
-                              onPressed: (usersState.isCreating ||
-                                      usersState.isUpdating)
-                                  ? null
-                                  : () async {
-                                      if (!formKey.currentState!.validate()) {
-                                        return;
-                                      }
+                              onPressed: (usersState.isCreating || usersState.isUpdating)
+    ? null
+    : () async {
+        if (!formKey.currentState!.validate()) {
+          return;
+        }
 
-                                      try {
-                                        if (isEdit) {
-                                          await ref
-                                              .read(usersControllerProvider
-                                                  .notifier)
-                                              .updateUser(
-                                                id: usuario.id,
-                                                name: nombreController.text
-                                                    .trim(),
-                                                email: correoController.text
-                                                    .trim(),
-                                                password: passwordController.text
-                                                    .trim(),
-                                                role: rolSeleccionado ==
-                                                        'Administrador'
-                                                    ? 'admin'
-                                                    : 'user',
-                                                isActive: activo,
-                                              );
+        final messenger = ScaffoldMessenger.of(this.context);
+        final navigator = Navigator.of(modalContext);
 
-                                          if (!mounted) return;
-                                          Navigator.pop(context);
+        try {
+          if (isEdit) {
+            await ref.read(usersControllerProvider.notifier).updateUser(
+                  id: usuario.id,
+                  name: nombreController.text.trim(),
+                  email: correoController.text.trim(),
+                  password: passwordController.text.trim(),
+                  role: rolSeleccionado == 'Administrador'
+                      ? 'admin'
+                      : 'user',
+                  isActive: activo,
+                );
 
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Usuario editado correctamente',
-                                              ),
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
-                                          return;
-                                        }
+            if (!mounted) return;
 
-                                        await ref
-                                            .read(usersControllerProvider
-                                                .notifier)
-                                            .createUser(
-                                              name: nombreController.text
-                                                  .trim(),
-                                              email: correoController.text
-                                                  .trim(),
-                                              password: passwordController.text
-                                                  .trim(),
-                                              role:
-                                                  rolSeleccionado ==
-                                                          'Administrador'
-                                                      ? 'admin'
-                                                      : 'user',
-                                              isActive: activo,
-                                            );
+            navigator.pop();
 
-                                        if (!mounted) return;
-                                        Navigator.pop(context);
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Usuario editado correctamente'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
 
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Usuario creado correctamente',
-                                            ),
-                                            behavior:
-                                                SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      } catch (e) {
-                                        if (!mounted) return;
+          await ref.read(usersControllerProvider.notifier).createUser(
+                name: nombreController.text.trim(),
+                email: correoController.text.trim(),
+                password: passwordController.text.trim(),
+                role: rolSeleccionado == 'Administrador'
+                    ? 'admin'
+                    : 'user',
+                isActive: activo,
+              );
 
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              e.toString().replaceFirst(
-                                                    'Exception: ',
-                                                    '',
-                                                  ),
-                                            ),
-                                            behavior:
-                                                SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      }
-                                    },
+          if (!mounted) return;
+
+          navigator.pop();
+
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Usuario creado correctamente'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } catch (e) {
+          if (!mounted) return;
+
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                e.toString().replaceFirst('Exception: ', ''),
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
                               child: (usersState.isCreating ||
                                       usersState.isUpdating)
                                   ? const SizedBox(
@@ -485,36 +461,39 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                         ),
                       ),
                       onPressed: () async {
-                        try {
-                          Navigator.pop(context);
+  final messenger = ScaffoldMessenger.of(this.context);
+  final navigator = Navigator.of(context);
 
-                          await ref
-                              .read(usersControllerProvider.notifier)
-                              .deleteUser(id: usuario.id);
+  try {
+    navigator.pop();
 
-                          if (!mounted) return;
+    await ref
+        .read(usersControllerProvider.notifier)
+        .deleteUser(id: usuario.id);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${usuario.nombre} eliminado correctamente',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        } catch (e) {
-                          if (!mounted) return;
+    if (!mounted) return;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                e.toString().replaceFirst('Exception: ', ''),
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          '${usuario.nombre} eliminado correctamente',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString().replaceFirst('Exception: ', ''),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+      );
+  }
+},
                       child: const Text(
                         'Eliminar',
                         style: TextStyle(

@@ -1,458 +1,491 @@
+import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
+import 'package:event_app/features/categories/data/models/category_model.dart';
+import 'package:event_app/features/categories/presentation/providers/categories_provider.dart';
+import 'package:event_app/features/events/data/models/event_model.dart';
+import 'package:event_app/features/events/presentation/providers/events_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EventosPage extends StatefulWidget {
+class EventosPage extends ConsumerStatefulWidget {
   const EventosPage({super.key});
 
   @override
-  State<EventosPage> createState() => _EventosPageState();
+  ConsumerState<EventosPage> createState() => _EventosPageState();
 }
 
-class _EventosPageState extends State<EventosPage> {
+class _EventosPageState extends ConsumerState<EventosPage> {
   final TextEditingController _searchController = TextEditingController();
-
-  final List<EventoModel> _eventos = [
-    EventoModel(
-      id: '1',
-      titulo: 'Cita médica general',
-      categoria: 'Cita médica',
-      fecha: '25/03/2026',
-      hora: '09:00 AM',
-      cupos: 12,
-      activo: true,
-      descripcion: 'Atención médica general para usuarios registrados.',
-    ),
-    EventoModel(
-      id: '2',
-      titulo: 'Sesión de psicología',
-      categoria: 'Psicólogo',
-      fecha: '26/03/2026',
-      hora: '10:30 AM',
-      cupos: 8,
-      activo: true,
-      descripcion: 'Atención psicológica individual con agenda previa.',
-    ),
-    EventoModel(
-      id: '3',
-      titulo: 'Campaña de vacunación',
-      categoria: 'Vacunación',
-      fecha: '27/03/2026',
-      hora: '08:00 AM',
-      cupos: 30,
-      activo: false,
-      descripcion: 'Jornada preventiva de vacunación para usuarios.',
-    ),
-    EventoModel(
-      id: '4',
-      titulo: 'Aplicación de inyección',
-      categoria: 'Inyección',
-      fecha: '28/03/2026',
-      hora: '11:00 AM',
-      cupos: 15,
-      activo: true,
-      descripcion: 'Servicio de inyección programada según cita.',
-    ),
-  ];
-
   String _searchText = '';
 
-  List<EventoModel> get _filteredEventos {
-    if (_searchText.trim().isEmpty) return _eventos;
+@override
+void initState() {
+  super.initState();
 
-    return _eventos.where((evento) {
-      final text = _searchText.toLowerCase();
-      return evento.titulo.toLowerCase().contains(text) ||
-          evento.categoria.toLowerCase().contains(text) ||
-          evento.fecha.toLowerCase().contains(text) ||
-          evento.hora.toLowerCase().contains(text);
+  Future.microtask(() {
+    final authState = ref.read(authControllerProvider);
+    final token = authState.token ?? '';
+
+    if (token.isEmpty) return;
+
+    ref.read(categoriesProvider.notifier).loadCategories(token: token);
+    ref.read(eventsProvider.notifier).loadEvents(token: token);
+  });
+}
+
+  List<EventModel> _applyFilter(List<EventModel> events) {
+    if (_searchText.trim().isEmpty) return events;
+
+    final text = _searchText.toLowerCase().trim();
+
+    return events.where((event) {
+      return event.title.toLowerCase().contains(text) ||
+          event.category.name.toLowerCase().contains(text) ||
+          event.date.toLowerCase().contains(text) ||
+          event.time.toLowerCase().contains(text);
     }).toList();
   }
 
-  void _openEventoDialog({EventoModel? evento}) {
+  Future<void> _openEventoDialog({
+    EventModel? evento,
+  }) async {
     final isEdit = evento != null;
 
     final tituloController =
-        TextEditingController(text: isEdit ? evento.titulo : '');
+        TextEditingController(text: isEdit ? evento.title : '');
     final descripcionController =
-        TextEditingController(text: isEdit ? evento.descripcion : '');
+        TextEditingController(text: isEdit ? evento.description : '');
     final fechaController =
-        TextEditingController(text: isEdit ? evento.fecha : '');
+        TextEditingController(text: isEdit ? evento.date : '');
     final horaController =
-        TextEditingController(text: isEdit ? evento.hora : '');
-    final cuposController =
-        TextEditingController(text: isEdit ? evento.cupos.toString() : '');
+        TextEditingController(text: isEdit ? evento.time : '');
 
-    String categoriaSeleccionada =
-        isEdit ? evento.categoria : 'Cita médica';
-    bool activo = isEdit ? evento.activo : true;
+    bool activo = isEdit ? evento.isActive : true;
+    String? categoriaSeleccionadaId =
+        isEdit ? evento.category.id : null;
 
     final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
 
-    const categorias = [
-      'Psicólogo',
-      'Inyección',
-      'Cita médica',
-      'Odontología',
-      'Laboratorio',
-      'Control general',
-      'Vacunación',
-      'Terapia',
-    ];
+    final categoriesState = ref.read(categoriesProvider);
 
-    showModalBottomSheet(
-  context: context,
-  isScrollControlled: true,
-  isDismissible: true,
-  enableDrag: true,
-  useSafeArea: true,
-  backgroundColor: Colors.transparent,
-  builder: (_) {
-    return StatefulBuilder(
-      builder: (context, setModalState) {
-        final mediaQuery = MediaQuery.of(context);
-        final bottomInset = mediaQuery.viewInsets.bottom;
-        final maxHeight = mediaQuery.size.height * 0.90;
+    final categories = categoriesState.maybeWhen(
+      data: (data) => data.where((e) => e.isActive || e.id == categoriaSeleccionadaId).toList(),
+      orElse: () => <CategoryModel>[],
+    );
 
-        return GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomInset),
-            child: Container(
-              constraints: BoxConstraints(
-                maxHeight: maxHeight,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Container(
-                        width: 46,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD7DBE8),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              isEdit ? 'Editar evento' : 'Nuevo evento',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF181A20),
-                              ),
+    if (categories.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Primero debes crear al menos una categoría'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    categoriaSeleccionadaId ??= categories.first.id;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final mediaQuery = MediaQuery.of(context);
+            final bottomInset = mediaQuery.viewInsets.bottom;
+            final maxHeight = mediaQuery.size.height * 0.90;
+
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(30)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        Center(
+                          child: Container(
+                            width: 46,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD7DBE8),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-                        child: Form(
-                          key: formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: Row(
                             children: [
-                              Text(
-                                isEdit
-                                    ? 'Modifica la información del evento seleccionado.'
-                                    : 'Completa la información para registrar un nuevo evento.',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF8B90A0),
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 22),
-                              const _InputLabel('Título del evento'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: tituloController,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                decoration: _inputDecoration(
-                                  hint: 'Ingresa el título',
-                                  icon: Icons.event_note_outlined,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'El título es obligatorio';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              const _InputLabel('Categoría'),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF7F8FC),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: const Color(0xFFE8EBF3),
-                                  ),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: categoriaSeleccionada,
-                                    isExpanded: true,
-                                    icon: const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: Color(0xFF2D4ECF),
-                                    ),
-                                    items: categorias
-                                        .map(
-                                          (categoria) => DropdownMenuItem(
-                                            value: categoria,
-                                            child: Text(categoria),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (value) {
-                                      if (value == null) return;
-                                      setModalState(() {
-                                        categoriaSeleccionada = value;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              const _InputLabel('Fecha'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: fechaController,
-                                keyboardType: TextInputType.datetime,
-                                decoration: _inputDecoration(
-                                  hint: 'Ej: 25/03/2026',
-                                  icon: Icons.calendar_month_outlined,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'La fecha es obligatoria';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              const _InputLabel('Hora'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: horaController,
-                                keyboardType: TextInputType.datetime,
-                                decoration: _inputDecoration(
-                                  hint: 'Ej: 09:00 AM',
-                                  icon: Icons.access_time_rounded,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'La hora es obligatoria';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              const _InputLabel('Cupos disponibles'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: cuposController,
-                                keyboardType: TextInputType.number,
-                                decoration: _inputDecoration(
-                                  hint: 'Ingresa el número de cupos',
-                                  icon: Icons.groups_outlined,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Los cupos son obligatorios';
-                                  }
-                                  if (int.tryParse(value.trim()) == null) {
-                                    return 'Ingresa un número válido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              const _InputLabel('Descripción'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: descripcionController,
-                                maxLines: 4,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                decoration: _inputDecoration(
-                                  hint: 'Describe el evento',
-                                  icon: Icons.description_outlined,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'La descripción es obligatoria';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 18),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF7F8FC),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: const Color(0xFFE8EBF3),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Expanded(
-                                      child: Text(
-                                        'Evento activo',
-                                        style: TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF181A20),
-                                        ),
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: activo,
-                                      activeColor: const Color(0xFF2D4ECF),
-                                      onChanged: (value) {
-                                        setModalState(() {
-                                          activo = value;
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2D4ECF),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    if (!formKey.currentState!.validate()) {
-                                      return;
-                                    }
-
-                                    if (isEdit) {
-                                      setState(() {
-                                        final index = _eventos.indexWhere(
-                                          (e) => e.id == evento.id,
-                                        );
-
-                                        if (index != -1) {
-                                          _eventos[index] = EventoModel(
-                                            id: evento.id,
-                                            titulo:
-                                                tituloController.text.trim(),
-                                            categoria: categoriaSeleccionada,
-                                            fecha: fechaController.text.trim(),
-                                            hora: horaController.text.trim(),
-                                            cupos: int.parse(
-                                              cuposController.text.trim(),
-                                            ),
-                                            activo: activo,
-                                            descripcion: descripcionController
-                                                .text
-                                                .trim(),
-                                          );
-                                        }
-                                      });
-                                    } else {
-                                      setState(() {
-                                        _eventos.insert(
-                                          0,
-                                          EventoModel(
-                                            id: DateTime.now()
-                                                .millisecondsSinceEpoch
-                                                .toString(),
-                                            titulo:
-                                                tituloController.text.trim(),
-                                            categoria: categoriaSeleccionada,
-                                            fecha: fechaController.text.trim(),
-                                            hora: horaController.text.trim(),
-                                            cupos: int.parse(
-                                              cuposController.text.trim(),
-                                            ),
-                                            activo: activo,
-                                            descripcion: descripcionController
-                                                .text
-                                                .trim(),
-                                          ),
-                                        );
-                                      });
-                                    }
-
-                                    Navigator.pop(context);
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          isEdit
-                                              ? 'Evento actualizado correctamente'
-                                              : 'Evento creado correctamente',
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-                                  child: Text(
-                                    isEdit
-                                        ? 'Guardar cambios'
-                                        : 'Crear evento',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                              Expanded(
+                                child: Text(
+                                  isEdit ? 'Editar evento' : 'Nuevo evento',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF181A20),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                            child: Form(
+                              key: formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isEdit
+                                        ? 'Modifica la información del evento seleccionado.'
+                                        : 'Completa la información para registrar un nuevo evento.',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF8B90A0),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                  const _InputLabel('Título del evento'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: tituloController,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ingresa el título',
+                                      icon: Icons.event_note_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'El título es obligatorio';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Categoría'),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: categoriaSeleccionadaId,
+                                        isExpanded: true,
+                                        icon: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Color(0xFF2D4ECF),
+                                        ),
+                                        items: categories.map((categoria) {
+                                          return DropdownMenuItem<String>(
+                                            value: categoria.id,
+                                            child: Text(categoria.name),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
+                                          setModalState(() {
+                                            categoriaSeleccionadaId = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Fecha'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: fechaController,
+                                    keyboardType: TextInputType.datetime,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ej: 25/03/2026',
+                                      icon: Icons.calendar_month_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La fecha es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Hora'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: horaController,
+                                    keyboardType: TextInputType.datetime,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ej: 09:00 AM',
+                                      icon: Icons.access_time_rounded,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La hora es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Descripción'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: descripcionController,
+                                    maxLines: 4,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    decoration: _inputDecoration(
+                                      hint: 'Describe el evento',
+                                      icon: Icons.description_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La descripción es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Expanded(
+                                          child: Text(
+                                            'Evento activo',
+                                            style: TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF181A20),
+                                            ),
+                                          ),
+                                        ),
+                                        Switch(
+                                          value: activo,
+                                          activeColor:
+                                              const Color(0xFF2D4ECF),
+                                          onChanged: (value) {
+                                            setModalState(() {
+                                              activo = value;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 56,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF2D4ECF),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                      ),
+                                      onPressed: isSaving
+                                          ? null
+                                          : () async {
+                                              if (!formKey.currentState!
+                                                  .validate()) {
+                                                return;
+                                              }
+
+                                              final authState = ref.read(
+                                                  authControllerProvider);
+                                              final token =
+                                                  authState.token ?? '';
+
+                                              if (token.isEmpty) {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Sesión no válida. Inicia sesión nuevamente',
+                                                      ),
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                    ),
+                                                  );
+                                                }
+                                                return;
+                                              }
+
+                                              try {
+                                                setModalState(() {
+                                                  isSaving = true;
+                                                });
+
+                                                if (isEdit) {
+                                                  await ref
+                                                      .read(eventsProvider
+                                                          .notifier)
+                                                      .updateEvent(
+                                                        token: token,
+                                                        id: evento.id,
+                                                        title:
+                                                            tituloController
+                                                                .text
+                                                                .trim(),
+                                                        categoryId:
+                                                            categoriaSeleccionadaId!,
+                                                        description:
+                                                            descripcionController
+                                                                .text
+                                                                .trim(),
+                                                        date:
+                                                            fechaController
+                                                                .text
+                                                                .trim(),
+                                                        time:
+                                                            horaController.text
+                                                                .trim(),
+                                                        isActive: activo,
+                                                      );
+                                                } else {
+                                                  await ref
+                                                      .read(eventsProvider
+                                                          .notifier)
+                                                      .createEvent(
+                                                        token: token,
+                                                        title:
+                                                            tituloController
+                                                                .text
+                                                                .trim(),
+                                                        categoryId:
+                                                            categoriaSeleccionadaId!,
+                                                        description:
+                                                            descripcionController
+                                                                .text
+                                                                .trim(),
+                                                        date:
+                                                            fechaController
+                                                                .text
+                                                                .trim(),
+                                                        time:
+                                                            horaController.text
+                                                                .trim(),
+                                                        isActive: activo,
+                                                      );
+                                                }
+
+                                                if (mounted) {
+                                                  Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        isEdit
+                                                            ? 'Evento actualizado correctamente'
+                                                            : 'Evento creado correctamente',
+                                                      ),
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                    ),
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                setModalState(() {
+                                                  isSaving = false;
+                                                });
+
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        e.toString().replaceFirst(
+                                                            'Exception: ', ''),
+                                                      ),
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                      child: Text(
+                                        isSaving
+                                            ? 'Guardando...'
+                                            : isEdit
+                                                ? 'Guardar cambios'
+                                                : 'Crear evento',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
-  },
-);
   }
 
-  void _deleteEvento(EventoModel evento) {
-    showDialog(
+  Future<void> _deleteEvento(EventModel evento) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
@@ -464,12 +497,12 @@ class _EventosPageState extends State<EventosPage> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Text(
-          '¿Deseas eliminar el evento "${evento.titulo}"?',
+          '¿Deseas eliminar el evento "${evento.title}"?',
           style: const TextStyle(height: 1.4),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
@@ -480,31 +513,52 @@ class _EventosPageState extends State<EventosPage> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            onPressed: () {
-              setState(() {
-                _eventos.removeWhere((e) => e.id == evento.id);
-              });
-              Navigator.pop(context);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Evento eliminado correctamente'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Eliminar'),
           ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    try {
+      final authState = ref.read(authControllerProvider);
+      final token = authState.token ?? '';
+
+      if (token.isEmpty) {
+        throw Exception('Sesión no válida. Inicia sesión nuevamente');
+      }
+
+      await ref.read(eventsProvider.notifier).deleteEvent(
+            token: token,
+            id: evento.id,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Evento eliminado correctamente'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(e.toString().replaceFirst('Exception: ', '')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isTablet = width >= 700;
-    final padding = width * 0.06;
+    final eventsState = ref.watch(eventsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -512,90 +566,171 @@ class _EventosPageState extends State<EventosPage> {
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(padding, 14, padding, 12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
               child: _EventosHeader(
                 onBack: () => Navigator.pop(context),
                 onAdd: () => _openEventoDialog(),
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(padding, 0, padding, 24),
-                children: [
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Eventos',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF181A20),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Administra los eventos y servicios disponibles dentro de la aplicación.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF8B90A0),
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _SearchField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchText = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                  _ResumenEventos(
-                    total: _eventos.length,
-                    activos: _eventos.where((e) => e.activo).length,
-                    categorias: _eventos.map((e) => e.categoria).toSet().length,
-                    isTablet: isTablet,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Listado de eventos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF181A20),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_filteredEventos.isEmpty)
-                    const _EmptyEventosState()
-                  else
-                    ..._filteredEventos.map(
-                      (evento) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _EventoCard(
-                          evento: evento,
-                          onEdit: () => _openEventoDialog(evento: evento),
-                          onDelete: () => _deleteEvento(evento),
+              child: eventsState.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.event_busy_outlined,
+                          size: 56,
+                          color: Color(0xFF8B90A0),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No se pudieron cargar los eventos',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF181A20),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          error.toString().replaceFirst('Exception: ', ''),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8B90A0),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final authState =
+                                ref.read(authControllerProvider);
+                            final token = authState.token ?? '';
+
+                            if (token.isEmpty) return;
+
+                            await ref
+                                .read(eventsProvider.notifier)
+                                .loadEvents(token: token);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2D4ECF),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reintentar',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
+                data: (events) {
+                  final filteredEvents = _applyFilter(events);
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      final authState = ref.read(authControllerProvider);
+                      final token = authState.token ?? '';
+
+                      if (token.isEmpty) return;
+
+                      await ref
+                          .read(categoriesProvider.notifier)
+                          .loadCategories(token: token);
+                      await ref
+                          .read(eventsProvider.notifier)
+                          .loadEvents(token: token);
+                    },
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      children: [
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Eventos',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF181A20),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Administra los eventos y servicios disponibles dentro de la aplicación.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8B90A0),
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _SearchField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchText = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _ResumenEventos(
+                          total: events.length,
+                          activos: events.where((e) => e.isActive).length,
+                          categorias:
+                              events.map((e) => e.category.id).toSet().length,
+                        ),
+                        const SizedBox(height: 22),
+                        const Text(
+                          'Listado de eventos',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF181A20),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (filteredEvents.isEmpty)
+                          const _EmptyEventosState()
+                        else
+                          ...filteredEvents.map(
+                            (evento) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _EventoCard(
+                                evento: evento,
+                                onEdit: () =>
+                                    _openEventoDialog(evento: evento),
+                                onDelete: () => _deleteEvento(evento),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: width < 700
-          ? FloatingActionButton(
-              elevation: 0,
-              backgroundColor: const Color(0xFF2D4ECF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              onPressed: () => _openEventoDialog(),
-              child: const Icon(Icons.add, color: Colors.white),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        elevation: 0,
+        backgroundColor: const Color(0xFF2D4ECF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        onPressed: () => _openEventoDialog(),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 
@@ -662,16 +797,10 @@ class _EventosHeader extends StatelessWidget {
           onTap: onBack,
         ),
         const Spacer(),
-        MediaQuery.of(context).size.width >= 700
-            ? _PrimaryHeaderButton(
-                icon: Icons.event_available_outlined,
-                label: 'Nuevo evento',
-                onTap: onAdd,
-              )
-            : _HeaderButton(
-                icon: Icons.add_rounded,
-                onTap: onAdd,
-              ),
+        _HeaderButton(
+          icon: Icons.add_rounded,
+          onTap: onAdd,
+        ),
       ],
     );
   }
@@ -704,49 +833,6 @@ class _HeaderButton extends StatelessWidget {
           child: Icon(
             icon,
             color: const Color(0xFF2D4ECF),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryHeaderButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _PrimaryHeaderButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D4ECF),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -814,58 +900,40 @@ class _ResumenEventos extends StatelessWidget {
   final int total;
   final int activos;
   final int categorias;
-  final bool isTablet;
 
   const _ResumenEventos({
     required this.total,
     required this.activos,
     required this.categorias,
-    required this.isTablet,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _MiniResumenCard(
-        title: 'Total',
-        value: '$total',
-        icon: Icons.event_note_outlined,
-      ),
-      _MiniResumenCard(
-        title: 'Activos',
-        value: '$activos',
-        icon: Icons.verified_outlined,
-      ),
-      _MiniResumenCard(
-        title: 'Categorías',
-        value: '$categorias',
-        icon: Icons.category_outlined,
-      ),
-    ];
-
-    if (isTablet) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 10),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 10),
-          Expanded(child: cards[2]),
-        ],
-      );
-    }
-
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(child: cards[0]),
-            const SizedBox(width: 10),
-            Expanded(child: cards[1]),
-          ],
+        Expanded(
+          child: _MiniResumenCard(
+            title: 'Total',
+            value: '$total',
+            icon: Icons.event_note_outlined,
+          ),
         ),
-        const SizedBox(height: 10),
-        cards[2],
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniResumenCard(
+            title: 'Activos',
+            value: '$activos',
+            icon: Icons.verified_outlined,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniResumenCard(
+            title: 'Categorías',
+            value: '$categorias',
+            icon: Icons.category_outlined,
+          ),
+        ),
       ],
     );
   }
@@ -885,17 +953,22 @@ class _MiniResumenCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 108,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F8FC),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE8EBF3)),
+        border: Border.all(
+          color: const Color(0xFFE8EBF3),
+        ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
@@ -903,28 +976,37 @@ class _MiniResumenCard extends StatelessWidget {
             child: Icon(
               icon,
               color: const Color(0xFF2D4ECF),
+              size: 22,
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF181A20),
-                ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF181A20),
+                height: 1,
               ),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF8B90A0),
-                ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Flexible(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8B90A0),
+                height: 1.1,
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -933,7 +1015,7 @@ class _MiniResumenCard extends StatelessWidget {
 }
 
 class _EventoCard extends StatelessWidget {
-  final EventoModel evento;
+  final EventModel evento;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -946,7 +1028,7 @@ class _EventoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final estadoColor =
-        evento.activo ? const Color(0xFF2D4ECF) : const Color(0xFF9EA4B5);
+        evento.isActive ? const Color(0xFF2D4ECF) : const Color(0xFF9EA4B5);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -979,7 +1061,7 @@ class _EventoCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      evento.titulo,
+                      evento.title,
                       style: const TextStyle(
                         fontSize: 16.5,
                         fontWeight: FontWeight.w800,
@@ -988,7 +1070,7 @@ class _EventoCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      evento.descripcion,
+                      evento.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1028,21 +1110,16 @@ class _EventoCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               _InfoBadge(
-                label: evento.categoria,
+                label: evento.category.name,
                 color: const Color(0xFF2D4ECF),
                 background: const Color(0xFFEAF0FF),
               ),
               _InfoBadge(
-                label: evento.activo ? 'Activo' : 'Inactivo',
+                label: evento.isActive ? 'Activo' : 'Inactivo',
                 color: estadoColor,
-                background: evento.activo
+                background: evento.isActive
                     ? const Color(0xFFEAF0FF)
                     : const Color(0xFFF0F2F7),
-              ),
-              _InfoBadge(
-                label: '${evento.cupos} cupos',
-                color: const Color(0xFF4D5875),
-                background: const Color(0xFFF0F2F7),
               ),
             ],
           ),
@@ -1056,7 +1133,7 @@ class _EventoCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                evento.fecha,
+                evento.date,
                 style: const TextStyle(
                   fontSize: 13.5,
                   color: Color(0xFF4D5875),
@@ -1072,7 +1149,7 @@ class _EventoCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  evento.hora,
+                  evento.time,
                   style: const TextStyle(
                     fontSize: 13.5,
                     color: Color(0xFF4D5875),
@@ -1179,26 +1256,4 @@ class _InputLabel extends StatelessWidget {
       ),
     );
   }
-}
-
-class EventoModel {
-  final String id;
-  final String titulo;
-  final String categoria;
-  final String fecha;
-  final String hora;
-  final int cupos;
-  final bool activo;
-  final String descripcion;
-
-  EventoModel({
-    required this.id,
-    required this.titulo,
-    required this.categoria,
-    required this.fecha,
-    required this.hora,
-    required this.cupos,
-    required this.activo,
-    required this.descripcion,
-  });
 }

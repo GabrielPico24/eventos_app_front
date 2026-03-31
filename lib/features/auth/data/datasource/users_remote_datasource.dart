@@ -69,20 +69,25 @@ class UsersRemoteDataSource {
     required String role,
     required bool isActive,
   }) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/users/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'role': role,
-        'isActive': isActive,
-      }),
-    );
+    final bodyMap = {
+  'name': name,
+  'email': email,
+  'role': role,
+  'isActive': isActive,
+};
+
+if (password.trim().isNotEmpty) {
+  bodyMap['password'] = password.trim();
+}
+
+final response = await http.put(
+  Uri.parse('$baseUrl/api/users/$id'),
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  },
+  body: jsonEncode(bodyMap),
+);
 
     final body = jsonDecode(response.body);
 

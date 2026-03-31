@@ -25,9 +25,9 @@ class AuthRemoteDataSource {
     final body = jsonDecode(response.body);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return LoginResponseModel.fromJson(body['data']);
+      return LoginResponseModel.fromJson(body);
     }
 
-    throw Exception(body['message'] ?? 'Error de login');
+    throw Exception(body['message'] ?? 'Error al iniciar sesión');
   }
 }

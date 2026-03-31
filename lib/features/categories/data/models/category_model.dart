@@ -17,15 +17,15 @@ class CategoryModel {
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'])
+          ? DateTime.tryParse(json['createdAt'].toString())
           : null,
       updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
+          ? DateTime.tryParse(json['updatedAt'].toString())
           : null,
     );
   }
