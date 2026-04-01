@@ -34,21 +34,34 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
   }
 
   void _setupSocketListeners() {
+    print('🟢 SOCKET: listeners de eventos configurados');
+
     socketService.off('event:created');
     socketService.off('event:updated');
     socketService.off('event:deleted');
 
     socketService.on('event:created', (data) {
+      print('🔥 SOCKET RECIBIDO -> event:created');
+      print('📦 DATA: $data');
+
       final current = state.valueOrNull ?? [];
       final event = EventModel.fromJson(Map<String, dynamic>.from(data));
 
       final exists = current.any((e) => e.id == event.id);
-      if (exists) return;
+      if (exists) {
+        print('⚠️ Evento ya existe, no se agrega duplicado');
+        return;
+      }
+
+      print('✅ Evento agregado al estado: ${event.id}');
 
       state = AsyncValue.data([event, ...current]);
     });
 
     socketService.on('event:updated', (data) {
+      print('🟡 SOCKET RECIBIDO -> event:updated');
+      print('📦 DATA: $data');
+
       final current = state.valueOrNull ?? [];
       final updated = EventModel.fromJson(Map<String, dynamic>.from(data));
 
@@ -56,14 +69,22 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         return event.id == updated.id ? updated : event;
       }).toList();
 
+      print('✅ Evento actualizado en estado: ${updated.id}');
+
       state = AsyncValue.data(newList);
     });
 
     socketService.on('event:deleted', (data) {
+      print('🔴 SOCKET RECIBIDO -> event:deleted');
+      print('📦 DATA: $data');
+
       final current = state.valueOrNull ?? [];
       final deletedId = data['id']?.toString() ?? '';
 
       final newList = current.where((e) => e.id != deletedId).toList();
+
+      print('🗑️ Evento eliminado del estado: $deletedId');
+
       state = AsyncValue.data(newList);
     });
   }

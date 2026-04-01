@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:event_app/core/config/env.dart';
 import 'package:event_app/core/providers/app_providers.dart';
 import 'package:event_app/core/services/socket_service.dart';
+import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:event_app/features/categories/data/datasources/categories_remote_data_source.dart';
 import 'package:event_app/features/categories/data/models/category_model.dart';
 
@@ -19,6 +20,7 @@ final categoriesProvider =
     final socketService = ref.read(socketServiceProvider);
 
     final notifier = CategoriesNotifier(
+      ref,
       remote,
       socketService,
     );
@@ -31,14 +33,19 @@ final categoriesProvider =
   },
 );
 
-class CategoriesNotifier extends StateNotifier<AsyncValue<List<CategoryModel>>> {
+class CategoriesNotifier
+    extends StateNotifier<AsyncValue<List<CategoryModel>>> {
+  final Ref ref;
   final CategoriesRemoteDataSource remote;
   final SocketService socketService;
 
   bool _socketListenersInitialized = false;
 
-  CategoriesNotifier(this.remote, this.socketService)
-      : super(const AsyncValue.loading());
+  CategoriesNotifier(
+    this.ref,
+    this.remote,
+    this.socketService,
+  ) : super(const AsyncValue.loading());
 
   Future<void> loadCategories({
     required String token,
@@ -56,7 +63,16 @@ class CategoriesNotifier extends StateNotifier<AsyncValue<List<CategoryModel>>> 
 
       _initSocketListeners();
     } catch (e, st) {
-      print('❌ error en loadCategories => $e');
+      final message = e.toString();
+
+      print('❌ error en loadCategories => $message');
+
+      if (message.contains('401|')) {
+        print(
+            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.loadCategories');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
       if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
@@ -68,14 +84,28 @@ class CategoriesNotifier extends StateNotifier<AsyncValue<List<CategoryModel>>> 
     required String description,
     required bool isActive,
   }) async {
-    await remote.createCategory(
-      token: token,
-      payload: {
-        'name': name,
-        'description': description,
-        'isActive': isActive,
-      },
-    );
+    try {
+      await remote.createCategory(
+        token: token,
+        payload: {
+          'name': name,
+          'description': description,
+          'isActive': isActive,
+        },
+      );
+    } catch (e) {
+      final message = e.toString();
+
+      print('❌ error en createCategory => $message');
+
+      if (message.contains('401|')) {
+        print(
+            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.createCategory');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
+      rethrow;
+    }
   }
 
   Future<void> updateCategory({
@@ -85,25 +115,53 @@ class CategoriesNotifier extends StateNotifier<AsyncValue<List<CategoryModel>>> 
     required String description,
     required bool isActive,
   }) async {
-    await remote.updateCategory(
-      token: token,
-      id: id,
-      payload: {
-        'name': name,
-        'description': description,
-        'isActive': isActive,
-      },
-    );
+    try {
+      await remote.updateCategory(
+        token: token,
+        id: id,
+        payload: {
+          'name': name,
+          'description': description,
+          'isActive': isActive,
+        },
+      );
+    } catch (e) {
+      final message = e.toString();
+
+      print('❌ error en updateCategory => $message');
+
+      if (message.contains('401|')) {
+        print(
+            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.updateCategory');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
+      rethrow;
+    }
   }
 
   Future<void> deleteCategory({
     required String token,
     required String id,
   }) async {
-    await remote.deleteCategory(
-      token: token,
-      id: id,
-    );
+    try {
+      await remote.deleteCategory(
+        token: token,
+        id: id,
+      );
+    } catch (e) {
+      final message = e.toString();
+
+      print('❌ error en deleteCategory => $message');
+
+      if (message.contains('401|')) {
+        print(
+            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.deleteCategory');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
+      rethrow;
+    }
   }
 
   void _initSocketListeners() {

@@ -25,6 +25,11 @@ class UsersRemoteDataSource {
       return data.map((e) => UserModel.fromJson(e)).toList();
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en getUsers -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al listar usuarios');
   }
 
@@ -57,6 +62,11 @@ class UsersRemoteDataSource {
       return UserModel.fromJson(body['data']);
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en createUser -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al crear usuario');
   }
 
@@ -70,24 +80,24 @@ class UsersRemoteDataSource {
     required bool isActive,
   }) async {
     final bodyMap = {
-  'name': name,
-  'email': email,
-  'role': role,
-  'isActive': isActive,
-};
+      'name': name,
+      'email': email,
+      'role': role,
+      'isActive': isActive,
+    };
 
-if (password.trim().isNotEmpty) {
-  bodyMap['password'] = password.trim();
-}
+    if (password.trim().isNotEmpty) {
+      bodyMap['password'] = password.trim();
+    }
 
-final response = await http.put(
-  Uri.parse('$baseUrl/api/users/$id'),
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $token',
-  },
-  body: jsonEncode(bodyMap),
-);
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/users/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(bodyMap),
+    );
 
     final body = jsonDecode(response.body);
 
@@ -95,29 +105,40 @@ final response = await http.put(
       return UserModel.fromJson(body['data']);
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en updateUser -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al editar usuario');
   }
+
   Future<void> deleteUser({
-  required String token,
-  required String id,
-}) async {
-  final response = await http.delete(
-    Uri.parse('$baseUrl/api/users/$id'),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-  );
+    required String token,
+    required String id,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/users/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  Map<String, dynamic> body = {};
-  if (response.body.isNotEmpty) {
-    body = jsonDecode(response.body);
+    Map<String, dynamic> body = {};
+    if (response.body.isNotEmpty) {
+      body = jsonDecode(response.body);
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en deleteUser -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al eliminar usuario');
   }
-
-  if (response.statusCode >= 200 && response.statusCode < 300) {
-    return;
-  }
-
-  throw Exception(body['message'] ?? 'Error al eliminar usuario');
-}
 }

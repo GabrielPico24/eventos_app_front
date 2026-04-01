@@ -12,4 +12,10 @@ class AuthRepository {
   }) {
     return remoteDataSource.login(email: email, password: password);
   }
+
+  Future<String> refreshToken({
+    required String refreshToken,
+  }) {
+    return remoteDataSource.refreshToken(refreshToken: refreshToken);
+  }
 }

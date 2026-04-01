@@ -27,6 +27,11 @@ class CategoriesRemoteDataSource {
       return data.map((e) => CategoryModel.fromJson(e)).toList();
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en getCategories -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al listar categorías');
   }
 
@@ -47,6 +52,11 @@ class CategoriesRemoteDataSource {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return CategoryModel.fromJson(body['data']);
+    }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en createCategory -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
     throw Exception(body['message'] ?? 'Error al crear categoría');
@@ -72,6 +82,11 @@ class CategoriesRemoteDataSource {
       return CategoryModel.fromJson(body['data']);
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en updateCategory -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al actualizar categoría');
   }
 
@@ -89,8 +104,15 @@ class CategoriesRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(body['message'] ?? 'Error al eliminar categoría');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
     }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en deleteCategory -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al eliminar categoría');
   }
 }

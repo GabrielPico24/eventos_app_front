@@ -30,4 +30,26 @@ class AuthRemoteDataSource {
 
     throw Exception(body['message'] ?? 'Error al iniciar sesión');
   }
+
+  Future<String> refreshToken({
+    required String refreshToken,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/refresh'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'refreshToken': refreshToken,
+      }),
+    );
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body['accessToken'] ?? '';
+    }
+
+    throw Exception(body['message'] ?? 'No se pudo renovar la sesión');
+  }
 }

@@ -25,6 +25,11 @@ class EventsRemoteDataSource {
       return data.map((e) => EventModel.fromJson(e)).toList();
     }
 
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en getEvents -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
     throw Exception(body['message'] ?? 'Error al listar eventos');
   }
 
@@ -55,9 +60,16 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(body['message'] ?? 'Error al crear evento');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
     }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en createEvent -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al crear evento');
   }
 
   Future<void> updateEvent({
@@ -88,9 +100,16 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(body['message'] ?? 'Error al actualizar evento');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
     }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en updateEvent -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al actualizar evento');
   }
 
   Future<void> deleteEvent({
@@ -107,8 +126,15 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(body['message'] ?? 'Error al eliminar evento');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
     }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en deleteEvent -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al eliminar evento');
   }
 }
