@@ -1,29 +1,9 @@
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
 
 class SessionUnlockPage extends ConsumerWidget {
   const SessionUnlockPage({super.key});
-
-  Future<bool> _authenticate() async {
-    final localAuth = LocalAuthentication();
-
-    final canCheckBiometrics = await localAuth.canCheckBiometrics;
-    final isDeviceSupported = await localAuth.isDeviceSupported();
-
-    if (!canCheckBiometrics && !isDeviceSupported) {
-      return false;
-    }
-
-    return await localAuth.authenticate(
-      localizedReason: 'Desbloquee su sesión para continuar',
-      options: const AuthenticationOptions(
-        biometricOnly: true,
-        stickyAuth: true,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,9 +44,7 @@ class SessionUnlockPage extends ConsumerWidget {
                         : () async {
                             final ok = await ref
                                 .read(authControllerProvider.notifier)
-                                .unlockSessionWithBiometrics(
-                                  biometricAuth: _authenticate,
-                                );
+                                .unlockSessionWithBiometrics();
 
                             if (!ok && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

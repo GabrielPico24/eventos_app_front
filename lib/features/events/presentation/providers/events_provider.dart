@@ -1,4 +1,5 @@
 import 'package:event_app/core/providers/app_providers.dart';
+import 'package:event_app/core/services/socket_service.dart';
 import 'package:event_app/features/events/data/datasources/events_remote_data_source.dart';
 import 'package:event_app/features/events/data/models/event_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,17 +24,22 @@ final eventsProvider =
 class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
   final Ref ref;
   final EventsRemoteDataSource datasource;
-  final dynamic socketService;
+  final SocketService socketService;
+
+  bool _socketListenersInitialized = false;
 
   EventsNotifier({
     required this.ref,
     required this.datasource,
     required this.socketService,
   }) : super(const AsyncValue.loading()) {
-    _setupSocketListeners();
+    _initSocketListeners();
   }
 
-  void _setupSocketListeners() {
+  void _initSocketListeners() {
+    if (_socketListenersInitialized) return;
+    _socketListenersInitialized = true;
+
     print('🟢 SOCKET: listeners de eventos configurados');
 
     socketService.off('event:created');
@@ -41,52 +47,86 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     socketService.off('event:deleted');
 
     socketService.on('event:created', (data) {
-      print('🔥 SOCKET RECIBIDO -> event:created');
-      print('📦 DATA: $data');
+      try {
+        print('🔥 SOCKET RECIBIDO -> event:created');
+        print('📦 DATA: $data');
 
-      final current = state.valueOrNull ?? [];
-      final event = EventModel.fromJson(Map<String, dynamic>.from(data));
+        final current = state.valueOrNull ?? [];
+        final event = EventModel.fromJson(Map<String, dynamic>.from(data));
 
-      final exists = current.any((e) => e.id == event.id);
-      if (exists) {
-        print('⚠️ Evento ya existe, no se agrega duplicado');
-        return;
+        final exists = current.any((e) => e.id == event.id);
+        if (exists) {
+          print('⚠️ Evento ya existe, no se agrega duplicado');
+          return;
+        }
+
+        print('✅ Evento agregado al estado: ${event.id}');
+        state = AsyncValue.data([event, ...current]);
+      } catch (e, st) {
+        print('❌ Error procesando event:created => $e');
+        state = AsyncValue.error(e, st);
       }
-
-      print('✅ Evento agregado al estado: ${event.id}');
-
-      state = AsyncValue.data([event, ...current]);
     });
 
     socketService.on('event:updated', (data) {
-      print('🟡 SOCKET RECIBIDO -> event:updated');
-      print('📦 DATA: $data');
+      try {
+        print('🟡 SOCKET RECIBIDO -> event:updated');
+        print('📦 DATA: $data');
 
-      final current = state.valueOrNull ?? [];
-      final updated = EventModel.fromJson(Map<String, dynamic>.from(data));
+        final current = state.valueOrNull ?? [];
+        final updated = EventModel.fromJson(Map<String, dynamic>.from(data));
 
-      final newList = current.map((event) {
-        return event.id == updated.id ? updated : event;
-      }).toList();
+        final exists = current.any((event) => event.id == updated.id);
 
-      print('✅ Evento actualizado en estado: ${updated.id}');
+        if (!exists) {
+          print('⚠️ Evento actualizado no existe en estado, se agrega');
+          state = AsyncValue.data([updated, ...current]);
+          return;
+        }
 
-      state = AsyncValue.data(newList);
+        final newList = current.map((event) {
+          return event.id == updated.id ? updated : event;
+        }).toList();
+
+        print('✅ Evento actualizado en estado: ${updated.id}');
+        state = AsyncValue.data(newList);
+      } catch (e, st) {
+        print('❌ Error procesando event:updated => $e');
+        state = AsyncValue.error(e, st);
+      }
     });
 
     socketService.on('event:deleted', (data) {
-      print('🔴 SOCKET RECIBIDO -> event:deleted');
-      print('📦 DATA: $data');
+      try {
+        print('🔴 SOCKET RECIBIDO -> event:deleted');
+        print('📦 DATA: $data');
 
-      final current = state.valueOrNull ?? [];
-      final deletedId = data['id']?.toString() ?? '';
+        final current = state.valueOrNull ?? [];
+        final map = Map<String, dynamic>.from(data);
 
-      final newList = current.where((e) => e.id != deletedId).toList();
+        final deletedId =
+            map['id']?.toString() ?? map['_id']?.toString() ?? '';
 
-      print('🗑️ Evento eliminado del estado: $deletedId');
+        if (deletedId.isEmpty) {
+          print('⚠️ No llegó id en event:deleted');
+          return;
+        }
 
-      state = AsyncValue.data(newList);
+        final newList = current.where((e) => e.id != deletedId).toList();
+
+        print('🗑️ Evento eliminado del estado: $deletedId');
+        state = AsyncValue.data(newList);
+      } catch (e, st) {
+        print('❌ Error procesando event:deleted => $e');
+        state = AsyncValue.error(e, st);
+      }
     });
+  }
+
+  void rebindSocketListeners() {
+    print('🔄 Reenlazando listeners de eventos...');
+    _socketListenersInitialized = false;
+    _initSocketListeners();
   }
 
   Future<void> loadEvents({

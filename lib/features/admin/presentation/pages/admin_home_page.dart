@@ -1,5 +1,3 @@
-import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
-import 'package:event_app/features/auth/presentation/pages/session_unlock_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,11 +7,6 @@ class AdminHomePage extends ConsumerWidget {
 
 @override
 Widget build(BuildContext context, WidgetRef ref) {
-  final authState = ref.watch(authControllerProvider);
-
-if (authState.isSessionLocked) {
-  return const SessionUnlockPage();
-}
     final media = MediaQuery.of(context);
     final size = media.size;
     final width = size.width;

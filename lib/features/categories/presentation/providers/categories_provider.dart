@@ -45,7 +45,9 @@ class CategoriesNotifier
     this.ref,
     this.remote,
     this.socketService,
-  ) : super(const AsyncValue.loading());
+  ) : super(const AsyncValue.loading()) {
+    _initSocketListeners();
+  }
 
   Future<void> loadCategories({
     required String token,
@@ -60,8 +62,6 @@ class CategoriesNotifier
 
       print('🟢 categorías cargadas: ${categories.length}');
       state = AsyncValue.data(categories);
-
-      _initSocketListeners();
     } catch (e, st) {
       final message = e.toString();
 
@@ -69,7 +69,8 @@ class CategoriesNotifier
 
       if (message.contains('401|')) {
         print(
-            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.loadCategories');
+          '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.loadCategories',
+        );
         await ref.read(authControllerProvider.notifier).handleSessionExpired();
       }
 
@@ -100,7 +101,8 @@ class CategoriesNotifier
 
       if (message.contains('401|')) {
         print(
-            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.createCategory');
+          '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.createCategory',
+        );
         await ref.read(authControllerProvider.notifier).handleSessionExpired();
       }
 
@@ -132,7 +134,8 @@ class CategoriesNotifier
 
       if (message.contains('401|')) {
         print(
-            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.updateCategory');
+          '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.updateCategory',
+        );
         await ref.read(authControllerProvider.notifier).handleSessionExpired();
       }
 
@@ -156,7 +159,8 @@ class CategoriesNotifier
 
       if (message.contains('401|')) {
         print(
-            '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.deleteCategory');
+          '🔒 TOKEN EXPIRADO detectado en CategoriesNotifier.deleteCategory',
+        );
         await ref.read(authControllerProvider.notifier).handleSessionExpired();
       }
 
@@ -167,6 +171,10 @@ class CategoriesNotifier
   void _initSocketListeners() {
     if (_socketListenersInitialized) return;
     _socketListenersInitialized = true;
+
+    socketService.off('category:created');
+    socketService.off('category:updated');
+    socketService.off('category:deleted');
 
     print('✅ Listeners de categorías registrados');
 
@@ -203,7 +211,7 @@ class CategoriesNotifier
         print('📩 socket category:deleted => $data');
 
         final map = Map<String, dynamic>.from(data);
-        final id = map['id']?.toString();
+        final id = map['id']?.toString() ?? map['_id']?.toString();
 
         if (id == null || id.isEmpty) return;
 
@@ -214,18 +222,31 @@ class CategoriesNotifier
     });
   }
 
+  void rebindSocketListeners() {
+    print('🔄 Reenlazando listeners de categorías...');
+    _socketListenersInitialized = false;
+    _initSocketListeners();
+  }
+
   void _addCategory(CategoryModel category) {
     final current = state.value ?? [];
 
     final exists = current.any((item) => item.id == category.id);
     if (exists) return;
 
-    final updated = [...current, category];
+    final updated = [category, ...current];
     state = AsyncValue.data(updated);
   }
 
   void _replaceCategory(CategoryModel category) {
     final current = state.value ?? [];
+
+    final exists = current.any((item) => item.id == category.id);
+
+    if (!exists) {
+      state = AsyncValue.data([category, ...current]);
+      return;
+    }
 
     final updated = current.map((item) {
       if (item.id == category.id) {
@@ -248,6 +269,5 @@ class CategoriesNotifier
     socketService.off('category:created');
     socketService.off('category:updated');
     socketService.off('category:deleted');
-    _socketListenersInitialized = false;
   }
 }

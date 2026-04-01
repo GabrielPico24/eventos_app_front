@@ -1,3 +1,5 @@
+import 'package:event_app/core/services/biometric_service.dart';
+import 'package:event_app/core/services/secure_storage_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:event_app/core/config/env.dart';
 import 'package:event_app/core/services/socket_service.dart';
@@ -18,4 +20,12 @@ final socketServiceProvider = Provider<SocketService>((ref) {
   });
 
   return service;
+});
+
+final secureStorageProvider = Provider<SecureStorageService>((ref) {
+  return SecureStorageService();
+});
+
+final biometricServiceProvider = Provider<BiometricService>((ref) {
+  return BiometricService();
 });

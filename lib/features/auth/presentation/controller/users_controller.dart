@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:event_app/core/config/env.dart';
 import 'package:event_app/core/providers/app_providers.dart';
+import 'package:event_app/core/services/socket_service.dart';
 import 'package:event_app/features/auth/data/datasource/users_remote_datasource.dart';
 import 'package:event_app/features/auth/data/repositories/users_repository.dart';
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
@@ -59,63 +60,72 @@ final usersRepositoryProvider = Provider<UsersRepository>((ref) {
 class UsersController extends StateNotifier<UsersState> {
   final Ref ref;
   final UsersRepository repository;
+  final SocketService socketService;
 
-  bool _socketInitialized = false;
+  bool _socketListenersInitialized = false;
 
-  UsersController(this.ref, this.repository) : super(const UsersState()) {
+  UsersController(
+    this.ref,
+    this.repository,
+    this.socketService,
+  ) : super(const UsersState()) {
     _initSocketListeners();
   }
 
-void _initSocketListeners() {
-  if (_socketInitialized) return;
+  void _initSocketListeners() {
+    if (_socketListenersInitialized) return;
+    _socketListenersInitialized = true;
 
-  final socketService = ref.read(socketServiceProvider);
+    socketService.off('user:created');
+    socketService.off('user:updated');
+    socketService.off('user:deleted');
 
-  socketService.off('user:created');
-  socketService.off('user:updated');
-  socketService.off('user:deleted');
-
-  socketService.on('user:created', (data) {
-    try {
-      print('📥 socket user:created => $data');
-      final user = UserModel.fromJson(Map<String, dynamic>.from(data));
-      _onUserCreated(user);
-    } catch (e) {
-      print('❌ error en user:created => $e');
-    }
-  });
-
-  socketService.on('user:updated', (data) {
-    try {
-      print('📥 socket user:updated => $data');
-      final user = UserModel.fromJson(Map<String, dynamic>.from(data));
-      _onUserUpdated(user);
-    } catch (e) {
-      print('❌ error en user:updated => $e');
-    }
-  });
-
-  socketService.on('user:deleted', (data) {
-    try {
-      print('📥 socket user:deleted => $data');
-      final map = Map<String, dynamic>.from(data);
-      final id = map['id']?.toString();
-      if (id != null && id.isNotEmpty) {
-        _onUserDeleted(id);
+    socketService.on('user:created', (data) {
+      try {
+        print('📥 socket user:created => $data');
+        final user = UserModel.fromJson(Map<String, dynamic>.from(data));
+        _onUserCreated(user);
+      } catch (e) {
+        print('❌ error en user:created => $e');
       }
-    } catch (e) {
-      print('❌ error en user:deleted => $e');
-    }
-  });
+    });
 
-  print('✅ Listeners de usuarios registrados');
-  _socketInitialized = true;
-}
+    socketService.on('user:updated', (data) {
+      try {
+        print('📥 socket user:updated => $data');
+        final user = UserModel.fromJson(Map<String, dynamic>.from(data));
+        _onUserUpdated(user);
+      } catch (e) {
+        print('❌ error en user:updated => $e');
+      }
+    });
+
+    socketService.on('user:deleted', (data) {
+      try {
+        print('📥 socket user:deleted => $data');
+
+        final map = Map<String, dynamic>.from(data);
+        final id = map['id']?.toString() ?? map['_id']?.toString();
+
+        if (id != null && id.isNotEmpty) {
+          _onUserDeleted(id);
+        }
+      } catch (e) {
+        print('❌ error en user:deleted => $e');
+      }
+    });
+
+    print('✅ Listeners de usuarios registrados');
+  }
+
+  void rebindSocketListeners() {
+    print('🔄 Reenlazando listeners de usuarios...');
+    _socketListenersInitialized = false;
+    _initSocketListeners();
+  }
 
   Future<void> loadUsers() async {
     try {
-      _initSocketListeners();
-
       final authState = ref.read(authControllerProvider);
       final token = authState.token;
 
@@ -142,6 +152,13 @@ void _initSocketListeners() {
         users: filteredUsers,
       );
     } catch (e) {
+      final message = e.toString();
+
+      if (message.contains('401|')) {
+        print('🔒 TOKEN EXPIRADO detectado en UsersController.loadUsers');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
@@ -181,6 +198,13 @@ void _initSocketListeners() {
         isCreating: false,
       );
     } catch (e) {
+      final message = e.toString();
+
+      if (message.contains('401|')) {
+        print('🔒 TOKEN EXPIRADO detectado en UsersController.createUser');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
       state = state.copyWith(
         isCreating: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
@@ -223,6 +247,13 @@ void _initSocketListeners() {
         isUpdating: false,
       );
     } catch (e) {
+      final message = e.toString();
+
+      if (message.contains('401|')) {
+        print('🔒 TOKEN EXPIRADO detectado en UsersController.updateUser');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
       state = state.copyWith(
         isUpdating: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
@@ -267,6 +298,13 @@ void _initSocketListeners() {
         isDeleting: false,
       );
     } catch (e) {
+      final message = e.toString();
+
+      if (message.contains('401|')) {
+        print('🔒 TOKEN EXPIRADO detectado en UsersController.deleteUser');
+        await ref.read(authControllerProvider.notifier).handleSessionExpired();
+      }
+
       state = state.copyWith(
         isDeleting: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
@@ -335,15 +373,18 @@ void _initSocketListeners() {
 
   @override
   void dispose() {
-    final socket = ref.read(socketServiceProvider).socket;
-    socket?.off('user:created');
-    socket?.off('user:updated');
-    socket?.off('user:deleted');
+    socketService.off('user:created');
+    socketService.off('user:updated');
+    socketService.off('user:deleted');
     super.dispose();
   }
 }
 
 final usersControllerProvider =
     StateNotifierProvider<UsersController, UsersState>((ref) {
-  return UsersController(ref, ref.read(usersRepositoryProvider));
+  return UsersController(
+    ref,
+    ref.read(usersRepositoryProvider),
+    ref.read(socketServiceProvider),
+  );
 });

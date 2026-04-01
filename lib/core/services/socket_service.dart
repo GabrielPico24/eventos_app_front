@@ -11,13 +11,10 @@ class SocketService {
     required String baseUrl,
     required String token,
   }) {
-    log('🟡 Intentando conectar socket...');
-    log('🟡 baseUrl: $baseUrl');
-    log('🟡 token enviado: $token');
+    log('🟡 SOCKET CONNECT -> baseUrl: $baseUrl');
+    log('🟡 SOCKET CONNECT -> token: $token');
 
-    if (_socket != null) {
-      disconnect();
-    }
+    disconnect();
 
     _socket = io.io(
       baseUrl,
@@ -30,23 +27,24 @@ class SocketService {
           .setAuth({
             'token': token,
           })
+          .enableForceNew()
           .build(),
     );
 
     _socket!.onConnect((_) {
-      log('✅ Socket conectado: ${_socket!.id}');
+      log('🟢 SOCKET CONECTADO: ${_socket!.id}');
     });
 
     _socket!.onDisconnect((reason) {
-      log('❌ Socket desconectado: $reason');
+      log('🔴 SOCKET DESCONECTADO: $reason');
     });
 
     _socket!.onConnectError((error) {
-      log('⚠️ Socket connect error: $error');
+      log('❌ SOCKET CONNECT ERROR: $error');
     });
 
     _socket!.onError((error) {
-      log('⚠️ Socket error: $error');
+      log('❌ SOCKET ERROR: $error');
     });
 
     _socket!.on('socket:connected', (data) {
@@ -56,7 +54,22 @@ class SocketService {
     _socket!.connect();
   }
 
+  void reconnectWithToken({
+    required String baseUrl,
+    required String token,
+  }) {
+    log('🔄 RECONNECT SOCKET WITH NEW TOKEN');
+
+    disconnect();
+
+    connect(
+      baseUrl: baseUrl,
+      token: token,
+    );
+  }
+
   void on(String event, Function(dynamic data) handler) {
+    _socket?.off(event);
     _socket?.on(event, handler);
   }
 
@@ -69,8 +82,18 @@ class SocketService {
   }
 
   void disconnect() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    _socket = null;
+    if (_socket != null) {
+      log('🔌 CERRANDO SOCKET ANTERIOR...');
+
+      _socket!.off('socket:connected');
+      _socket!.off('connect');
+      _socket!.off('disconnect');
+      _socket!.off('connect_error');
+      _socket!.off('error');
+
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
   }
 }
