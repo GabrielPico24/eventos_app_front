@@ -1,4 +1,4 @@
-import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
+/* import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:event_app/features/categories/data/models/category_model.dart';
 import 'package:event_app/features/categories/presentation/providers/categories_provider.dart';
 import 'package:event_app/features/events/data/models/event_model.dart';
@@ -1388,3 +1388,4 @@ class _InputLabel extends StatelessWidget {
     );
   }
 }
+ */
