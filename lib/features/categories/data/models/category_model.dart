@@ -15,11 +15,22 @@ class CategoryModel {
     this.updatedAt,
   });
 
+  factory CategoryModel.empty() {
+    return const CategoryModel(
+      id: '',
+      name: '',
+      description: '',
+      isActive: true,
+      createdAt: null,
+      updatedAt: null,
+    );
+  }
+
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
       isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
@@ -32,9 +43,12 @@ class CategoryModel {
 
   Map<String, dynamic> toJson() {
     return {
+      '_id': id,
       'name': name,
       'description': description,
       'isActive': isActive,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 

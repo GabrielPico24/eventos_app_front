@@ -21,36 +21,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _submitted = false;
 
   @override
-  void initState() {
-    super.initState();
-
-    ref.listenManual<AuthState>(
-      authControllerProvider,
-      (previous, next) {
-        if (!mounted) return;
-
-        if (next.isAuthenticated && next.role != null) {
-          if (next.role == UserRole.admin) {
-            context.go('/home-admin');
-          } else {
-            context.go('/home-user');
-          }
-        }
-
-        if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(next.errorMessage!),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          ref.read(authControllerProvider.notifier).clearError();
-        }
-      },
-    );
-  }
-
-  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -61,6 +31,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (!context.mounted) return;
+
+      if (next.isAuthenticated && next.role != null) {
+        if (next.role == UserRole.admin) {
+          context.go('/home-admin');
+        } else {
+          context.go('/home-user');
+        }
+        return;
+      }
+
+      final oldError = previous?.errorMessage;
+      final newError = next.errorMessage;
+
+      if (newError != null && newError.isNotEmpty && oldError != newError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(newError),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(authControllerProvider.notifier).clearError();
+      }
+    });
+
     final authState = ref.watch(authControllerProvider);
     final media = MediaQuery.of(context);
     final size = media.size;
@@ -163,9 +159,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   ),
                                 ),
                                 SizedBox(
-                                  height: isKeyboardOpen
-                                      ? 14
-                                      : (isSmall ? 24 : 20),
+                                  height:
+                                      isKeyboardOpen ? 14 : (isSmall ? 24 : 20),
                                 ),
                                 _CustomTextField(
                                   focusNode: _emailFocusNode,
@@ -261,15 +256,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         authState.isLoading ? null : _submit,
                                     style: ElevatedButton.styleFrom(
                                       elevation: 0,
-                                      backgroundColor:
-                                          const Color(0xFF2D4ECF),
+                                      backgroundColor: const Color(0xFF2D4ECF),
                                       foregroundColor: Colors.white,
                                       disabledBackgroundColor:
                                           const Color(0xFF2D4ECF)
                                               .withOpacity(0.65),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                     ),
                                     child: authState.isLoading

@@ -1,12 +1,13 @@
+import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class AdminHomePage extends ConsumerWidget {
-  const AdminHomePage({super.key});
+class UserHomePage extends ConsumerWidget {
+  const UserHomePage({super.key});
 
-@override
-Widget build(BuildContext context, WidgetRef ref) {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final media = MediaQuery.of(context);
     final size = media.size;
     final width = size.width;
@@ -14,8 +15,8 @@ Widget build(BuildContext context, WidgetRef ref) {
 
     final horizontalPadding = width * 0.06;
     final crossAxisCount = isTablet ? 3 : (width < 360 ? 1 : 2);
-    final childAspectRatio = isTablet ? 1.05 : 0.78;
-
+    final childAspectRatio = isTablet ? 1.08 : 0.86;
+final authState = ref.watch(authControllerProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -30,7 +31,10 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   8,
                 ),
-                child: _AdminHeader(width: width),
+                child: _UserHeader(
+  width: width,
+  userName: authState.name,
+),
               ),
             ),
             SliverToBoxAdapter(
@@ -42,7 +46,7 @@ Widget build(BuildContext context, WidgetRef ref) {
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: const _OverviewSection(),
+                child: const _UserOverviewSection(),
               ),
             ),
             SliverToBoxAdapter(
@@ -53,9 +57,9 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   14,
                 ),
-                child: const _SectionTitle(
-                  title: 'Módulos principales',
-                  subtitle: 'Gestiona todas las funciones administrativas',
+                child: const _UserSectionTitle(
+                  title: 'Mis módulos',
+                  subtitle: 'Gestiona tus eventos y recordatorios',
                 ),
               ),
             ),
@@ -64,53 +68,33 @@ Widget build(BuildContext context, WidgetRef ref) {
               sliver: SliverGrid(
                 delegate: SliverChildListDelegate(
                   const [
-                    _AdminModuleCard(
-                      title: 'Usuarios',
-                      subtitle: 'Crear, editar y eliminar usuarios',
-                      icon: Icons.people_alt_outlined,
-                      color: Color(0xFF2D4ECF),
-                    ),
-                    _AdminModuleCard(
-                      title: 'Eventos',
-                      subtitle: 'Consulta y supervisa todos los eventos registrados',
+                    _UserModuleCard(
+                      title: 'Mis eventos',
+                      subtitle: 'Consulta, edita y filtra tus eventos',
                       icon: Icons.event_note_outlined,
-                      color: Color(0xFF4D6EF0),
-                    ),
-                    _AdminModuleCard(
-                      title: 'Categorías',
-                      subtitle: 'Tipos de eventos y servicios',
-                      icon: Icons.category_outlined,
-                      color: Color(0xFF3557D6),
-                    ),
-                    _AdminModuleCard(
-                      title: 'Notificaciones',
-                      subtitle: 'Enviar avisos a usuarios registrados',
-                      icon: Icons.notifications_none_rounded,
                       color: Color(0xFF2D4ECF),
+                      route: '/mis-eventos',
                     ),
-                    _AdminModuleCard(
+                    _UserModuleCard(
                       title: 'Calendario',
-                      subtitle: 'Visualiza agenda diaria y mensual',
+                      subtitle: 'Visualiza tus fechas programadas',
                       icon: Icons.calendar_month_outlined,
                       color: Color(0xFF4D6EF0),
+                      route: '/mis-eventos',
                     ),
-                    _AdminModuleCard(
-                      title: 'Reportes',
-                      subtitle: 'Resumen de actividad y asistencia',
-                      icon: Icons.bar_chart_rounded,
+                    _UserModuleCard(
+                      title: 'Recordatorios',
+                      subtitle: 'Eventos próximos y alertas',
+                      icon: Icons.notifications_none_rounded,
                       color: Color(0xFF3557D6),
+                      route: '/mis-eventos',
                     ),
-                    _AdminModuleCard(
-                      title: 'Solicitudes',
-                      subtitle: 'Aprobaciones o cambios pendientes',
-                      icon: Icons.assignment_late_outlined,
+                    _UserModuleCard(
+                      title: 'Categorías',
+                      subtitle: 'Consulta por tipo de evento',
+                      icon: Icons.category_outlined,
                       color: Color(0xFF2D4ECF),
-                    ),
-                    _AdminModuleCard(
-                      title: 'Configuración',
-                      subtitle: 'Parámetros generales de la app',
-                      icon: Icons.settings_outlined,
-                      color: Color(0xFF4D6EF0),
+                      route: '/mis-eventos',
                     ),
                   ],
                 ),
@@ -130,16 +114,16 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   14,
                 ),
-                child: const _SectionTitle(
+                child: const _UserSectionTitle(
                   title: 'Acciones rápidas',
-                  subtitle: 'Lo más usado por el administrador',
+                  subtitle: 'Lo más usado por el usuario',
                 ),
               ),
             ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: const _QuickActionsRow(),
+                child: const _UserQuickActionsRow(),
               ),
             ),
             SliverToBoxAdapter(
@@ -150,9 +134,9 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   14,
                 ),
-                child: const _SectionTitle(
+                child: const _UserSectionTitle(
                   title: 'Actividad reciente',
-                  subtitle: 'Últimos movimientos del sistema',
+                  subtitle: 'Resumen de tus últimos eventos',
                 ),
               ),
             ),
@@ -164,24 +148,41 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   28,
                 ),
-                child: const _RecentActivityCard(),
+                child: const _UserRecentActivityCard(),
               ),
             ),
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        elevation: 0,
+        backgroundColor: const Color(0xFF2D4ECF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        onPressed: () {
+          context.push('/mis-eventos');
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 }
 
-class _AdminHeader extends StatelessWidget {
+class _UserHeader extends StatelessWidget {
   final double width;
+  final String? userName;
 
-  const _AdminHeader({required this.width});
+  const _UserHeader({
+    required this.width,
+    required this.userName,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isSmall = width < 360;
+    final displayName =
+        userName?.trim().isNotEmpty == true ? userName!.trim() : 'Usuario';
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -194,16 +195,16 @@ class _AdminHeader extends StatelessWidget {
           Positioned(
             top: -18,
             right: -12,
-            child: _DecorBubble(
+            child: _UserDecorBubble(
               size: isSmall ? 62 : 74,
               color: const Color(0xFF3557D6),
-              icon: Icons.calendar_month_outlined,
+              icon: Icons.event_note_outlined,
             ),
           ),
           Positioned(
             top: 38,
             right: 54,
-            child: _DecorBubble(
+            child: _UserDecorBubble(
               size: isSmall ? 34 : 40,
               color: const Color(0xFF4D6EF0),
               icon: Icons.notifications_none_rounded,
@@ -222,7 +223,7 @@ class _AdminHeader extends StatelessWidget {
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(
-                      Icons.admin_panel_settings_outlined,
+                      Icons.person_outline_rounded,
                       color: Color(0xFF2D4ECF),
                       size: 28,
                     ),
@@ -237,16 +238,16 @@ class _AdminHeader extends StatelessWidget {
                       onPressed: () {},
                       icon: const Icon(
                         Icons.logout_rounded,
-                        color: Color(0xFF2D4ECF), 
+                        color: Color(0xFF2D4ECF),
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Panel Administrador',
-                style: TextStyle(
+              Text(
+                'Bienvenido $displayName',
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF181A20),
@@ -254,7 +255,7 @@ class _AdminHeader extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Administra usuarios, eventos, categorías, notificaciones y reportes desde un solo lugar.',
+                'Gestiona tus eventos, recordatorios y próximas actividades desde un solo lugar.',
                 style: TextStyle(
                   fontSize: 14.5,
                   height: 1.45,
@@ -270,8 +271,8 @@ class _AdminHeader extends StatelessWidget {
   }
 }
 
-class _OverviewSection extends StatelessWidget {
-  const _OverviewSection();
+class _UserOverviewSection extends StatelessWidget {
+  const _UserOverviewSection();
 
   @override
   Widget build(BuildContext context) {
@@ -283,29 +284,29 @@ class _OverviewSection extends StatelessWidget {
           return Row(
             children: const [
               Expanded(
-                child: _OverviewCard(
-                  title: 'Usuarios',
-                  value: '128',
-                  subtitle: 'Registrados',
-                  icon: Icons.people_outline_rounded,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _OverviewCard(
-                  title: 'Eventos',
-                  value: '46',
-                  subtitle: 'Activos este mes',
-                  icon: Icons.event_available_outlined,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _OverviewCard(
-                  title: 'Avisos',
+                child: _UserOverviewCard(
+                  title: 'Mis eventos',
                   value: '12',
-                  subtitle: 'Pendientes de enviar',
-                  icon: Icons.campaign_outlined,
+                  subtitle: 'Registrados',
+                  icon: Icons.event_note_outlined,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _UserOverviewCard(
+                  title: 'Activos',
+                  value: '8',
+                  subtitle: 'Actualmente visibles',
+                  icon: Icons.verified_outlined,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _UserOverviewCard(
+                  title: 'Próximos',
+                  value: '3',
+                  subtitle: 'Pendientes esta semana',
+                  icon: Icons.notifications_active_outlined,
                 ),
               ),
             ],
@@ -314,25 +315,25 @@ class _OverviewSection extends StatelessWidget {
 
         return Column(
           children: const [
-            _OverviewCard(
-              title: 'Usuarios',
-              value: '128',
-              subtitle: 'Registrados',
-              icon: Icons.people_outline_rounded,
-            ),
-            SizedBox(height: 12),
-            _OverviewCard(
-              title: 'Eventos',
-              value: '46',
-              subtitle: 'Activos este mes',
-              icon: Icons.event_available_outlined,
-            ),
-            SizedBox(height: 12),
-            _OverviewCard(
-              title: 'Avisos',
+            _UserOverviewCard(
+              title: 'Mis eventos',
               value: '12',
-              subtitle: 'Pendientes de enviar',
-              icon: Icons.campaign_outlined,
+              subtitle: 'Registrados',
+              icon: Icons.event_note_outlined,
+            ),
+            SizedBox(height: 12),
+            _UserOverviewCard(
+              title: 'Activos',
+              value: '8',
+              subtitle: 'Actualmente visibles',
+              icon: Icons.verified_outlined,
+            ),
+            SizedBox(height: 12),
+            _UserOverviewCard(
+              title: 'Próximos',
+              value: '3',
+              subtitle: 'Pendientes esta semana',
+              icon: Icons.notifications_active_outlined,
             ),
           ],
         );
@@ -341,13 +342,13 @@ class _OverviewSection extends StatelessWidget {
   }
 }
 
-class _OverviewCard extends StatelessWidget {
+class _UserOverviewCard extends StatelessWidget {
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
 
-  const _OverviewCard({
+  const _UserOverviewCard({
     required this.title,
     required this.value,
     required this.subtitle,
@@ -420,17 +421,19 @@ class _OverviewCard extends StatelessWidget {
   }
 }
 
-class _AdminModuleCard extends StatelessWidget {
+class _UserModuleCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
+  final String route;
 
-  const _AdminModuleCard({
+  const _UserModuleCard({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.color,
+    required this.route,
   });
 
   @override
@@ -439,34 +442,7 @@ class _AdminModuleCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-onTap: () {
-  if (title == 'Usuarios') {
-    context.push('/usuarios');
-    return;
-  }
-
-  if (title == 'Eventos') {
-    context.push('/eventos');
-    return;
-  }
-
-  if (title == 'Categorías') {
-    context.push('/categorias');
-    return;
-  }
-
-  if (title == 'Notificaciones') {
-    context.push('/notificaciones');
-    return;
-  }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Abrir módulo: $title'),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
-},
+        onTap: () => context.push(route),
         child: Ink(
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8FC),
@@ -547,8 +523,8 @@ onTap: () {
   }
 }
 
-class _QuickActionsRow extends StatelessWidget {
-  const _QuickActionsRow();
+class _UserQuickActionsRow extends StatelessWidget {
+  const _UserQuickActionsRow();
 
   @override
   Widget build(BuildContext context) {
@@ -556,32 +532,32 @@ class _QuickActionsRow extends StatelessWidget {
       spacing: 12,
       runSpacing: 12,
       children: const [
-        _QuickActionChip(
-          icon: Icons.person_add_alt_1_rounded,
-          label: 'Nuevo usuario',
-        ),
-        _QuickActionChip(
-          icon: Icons.event_available_rounded,
+        _UserQuickActionChip(
+          icon: Icons.add_circle_outline_rounded,
           label: 'Nuevo evento',
         ),
-        _QuickActionChip(
-          icon: Icons.send_rounded,
-          label: 'Enviar aviso',
+        _UserQuickActionChip(
+          icon: Icons.filter_alt_outlined,
+          label: 'Filtrar',
         ),
-        _QuickActionChip(
-          icon: Icons.summarize_outlined,
-          label: 'Ver reportes',
+        _UserQuickActionChip(
+          icon: Icons.calendar_today_outlined,
+          label: 'Ver agenda',
+        ),
+        _UserQuickActionChip(
+          icon: Icons.notifications_none_rounded,
+          label: 'Recordatorios',
         ),
       ],
     );
   }
 }
 
-class _QuickActionChip extends StatelessWidget {
+class _UserQuickActionChip extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _QuickActionChip({
+  const _UserQuickActionChip({
     required this.icon,
     required this.label,
   });
@@ -592,14 +568,7 @@ class _QuickActionChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(label),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
+        onTap: () {},
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
@@ -630,8 +599,8 @@ class _QuickActionChip extends StatelessWidget {
   }
 }
 
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard();
+class _UserRecentActivityCard extends StatelessWidget {
+  const _UserRecentActivityCard();
 
   @override
   Widget build(BuildContext context) {
@@ -644,25 +613,25 @@ class _RecentActivityCard extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          _ActivityTile(
-            icon: Icons.people_outline_rounded,
-            title: 'Usuario registrado',
-            subtitle: 'Se creó un nuevo usuario normal',
-            time: 'Hace 10 min',
-          ),
-          Divider(height: 26, color: Color(0xFFE7EAF3)),
-          _ActivityTile(
+          _UserActivityTile(
             icon: Icons.event_note_outlined,
             title: 'Evento creado',
-            subtitle: 'Cita médica programada para mañana',
-            time: 'Hace 22 min',
+            subtitle: 'Reunión registrada para el viernes',
+            time: 'Hace 15 min',
           ),
           Divider(height: 26, color: Color(0xFFE7EAF3)),
-          _ActivityTile(
+          _UserActivityTile(
+            icon: Icons.edit_calendar_outlined,
+            title: 'Evento actualizado',
+            subtitle: 'Se modificó la hora de un evento',
+            time: 'Hace 40 min',
+          ),
+          Divider(height: 26, color: Color(0xFFE7EAF3)),
+          _UserActivityTile(
             icon: Icons.notifications_none_rounded,
-            title: 'Notificación enviada',
-            subtitle: 'Aviso general a usuarios registrados',
-            time: 'Hace 1 hora',
+            title: 'Recordatorio próximo',
+            subtitle: 'Tienes un evento cercano en 1 día',
+            time: 'Hoy',
           ),
         ],
       ),
@@ -670,13 +639,13 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-class _ActivityTile extends StatelessWidget {
+class _UserActivityTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final String time;
 
-  const _ActivityTile({
+  const _UserActivityTile({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -739,11 +708,11 @@ class _ActivityTile extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
+class _UserSectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _SectionTitle({
+  const _UserSectionTitle({
     required this.title,
     required this.subtitle,
   });
@@ -775,12 +744,12 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _DecorBubble extends StatelessWidget {
+class _UserDecorBubble extends StatelessWidget {
   final double size;
   final Color color;
   final IconData icon;
 
-  const _DecorBubble({
+  const _UserDecorBubble({
     required this.size,
     required this.color,
     required this.icon,

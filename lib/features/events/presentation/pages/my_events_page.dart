@@ -7,13 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MyEventsPage extends ConsumerStatefulWidget {
-  const EventosPage({super.key});
+  const MyEventsPage({super.key});
 
   @override
-  ConsumerState<EventosPage> createState() => _EventosPageState();
+  ConsumerState<MyEventsPage> createState() => _MyEventsPageState();
 }
 
-class _EventosPageState extends ConsumerState<EventosPage> {
+class _MyEventsPageState extends ConsumerState<MyEventsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
 
@@ -28,8 +28,14 @@ class _EventosPageState extends ConsumerState<EventosPage> {
       if (token.isEmpty) return;
 
       ref.read(categoriesProvider.notifier).loadCategories(token: token);
-      ref.read(eventsProvider.notifier).loadEvents(token: token);
+      ref.read(eventsProvider.notifier).loadMyEvents(token: token);
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<EventModel> _applyFilter(List<EventModel> events) {
@@ -41,8 +47,11 @@ class _EventosPageState extends ConsumerState<EventosPage> {
       return event.title.toLowerCase().contains(text) ||
           event.categoryName.toLowerCase().contains(text) ||
           event.startDate.toLowerCase().contains(text) ||
+          event.endDate.toLowerCase().contains(text) ||
           event.startTime.toLowerCase().contains(text) ||
-          event.location.toLowerCase().contains(text);
+          event.endTime.toLowerCase().contains(text) ||
+          event.location.toLowerCase().contains(text) ||
+          event.status.toLowerCase().contains(text);
     }).toList();
   }
 
@@ -164,7 +173,7 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                                 children: [
                                   Text(
                                     isEdit
-                                        ? 'Modifica la información del evento seleccionado.'
+                                        ? 'Modifica la información de tu evento seleccionado.'
                                         : 'Completa la información para registrar un nuevo evento.',
                                     style: const TextStyle(
                                       fontSize: 14,
@@ -359,7 +368,8 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                                         ),
                                         Switch(
                                           value: activo,
-                                          activeColor: const Color(0xFF2D4ECF),
+                                          activeColor:
+                                              const Color(0xFF2D4ECF),
                                           onChanged: (value) {
                                             setModalState(() {
                                               activo = value;
@@ -694,7 +704,7 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'No se pudieron cargar los eventos',
+                          'No se pudieron cargar tus eventos',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 18,
@@ -714,14 +724,15 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                         const SizedBox(height: 18),
                         ElevatedButton(
                           onPressed: () async {
-                            final authState = ref.read(authControllerProvider);
+                            final authState =
+                                ref.read(authControllerProvider);
                             final token = authState.token ?? '';
 
                             if (token.isEmpty) return;
 
                             await ref
                                 .read(eventsProvider.notifier)
-                                .loadEvents(token: token);
+                                .loadMyEvents(token: token);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2D4ECF),
@@ -753,14 +764,14 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                           .loadCategories(token: token);
                       await ref
                           .read(eventsProvider.notifier)
-                          .loadEvents(token: token);
+                          .loadMyEvents(token: token);
                     },
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       children: [
                         const SizedBox(height: 6),
                         const Text(
-                          'Eventos',
+                          'Mis eventos',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -769,7 +780,7 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Administra los eventos y servicios disponibles dentro de la aplicación.',
+                          'Gestiona tus eventos, categorías y fechas programadas.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Color(0xFF8B90A0),
@@ -794,7 +805,7 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                         ),
                         const SizedBox(height: 22),
                         const Text(
-                          'Listado de eventos',
+                          'Listado de mis eventos',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -811,7 +822,8 @@ class _EventosPageState extends ConsumerState<EventosPage> {
                               child: _EventoCard(
                                 evento: evento,
                                 onEdit: () => _openEventoDialog(evento: evento),
-                                onDelete: () => _toggleEventoStatus(evento),
+                                onToggleStatus: () =>
+                                    _toggleEventoStatus(evento),
                               ),
                             ),
                           ),
@@ -1119,12 +1131,12 @@ class _MiniResumenCard extends StatelessWidget {
 class _EventoCard extends StatelessWidget {
   final EventModel evento;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onToggleStatus;
 
   const _EventoCard({
     required this.evento,
     required this.onEdit,
-    required this.onDelete,
+    required this.onToggleStatus,
   });
 
   @override
@@ -1191,7 +1203,7 @@ class _EventoCard extends StatelessWidget {
                 ),
                 onSelected: (value) {
                   if (value == 'editar') onEdit();
-                  if (value == 'estado') onDelete();
+                  if (value == 'estado') onToggleStatus();
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
@@ -1212,7 +1224,7 @@ class _EventoCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               _InfoBadge(
-                label: evento.category.name,
+                label: evento.categoryName,
                 color: const Color(0xFF2D4ECF),
                 background: const Color(0xFFEAF0FF),
               ),
@@ -1223,6 +1235,11 @@ class _EventoCard extends StatelessWidget {
                     ? const Color(0xFFEAF0FF)
                     : const Color(0xFFF0F2F7),
               ),
+              _InfoBadge(
+  label: _buildStatusLabel(evento.status),
+  color: const Color(0xFF3557D6),
+  background: const Color(0xFFEAF0FF),
+),
             ],
           ),
           const SizedBox(height: 14),
@@ -1386,5 +1403,17 @@ class _InputLabel extends StatelessWidget {
         color: Color(0xFF181A20),
       ),
     );
+  }
+}
+String _buildStatusLabel(String status) {
+  switch (status.toLowerCase()) {
+    case 'upcoming':
+      return 'Próximo';
+    case 'completed':
+      return 'Completado';
+    case 'cancelled':
+      return 'Cancelado';
+    default:
+      return status;
   }
 }

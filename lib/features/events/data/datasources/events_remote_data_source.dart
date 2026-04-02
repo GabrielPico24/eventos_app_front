@@ -33,14 +33,48 @@ class EventsRemoteDataSource {
     throw Exception(body['message'] ?? 'Error al listar eventos');
   }
 
+  Future<List<EventModel>> getMyEvents({
+    required String token,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/events/my-events'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final List data = body['data'] ?? [];
+      return data.map((e) => EventModel.fromJson(e)).toList();
+    }
+
+    if (response.statusCode == 401) {
+      print('🔒 HTTP 401 en getMyEvents -> token expirado');
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al listar mis eventos');
+  }
+
   Future<void> createEvent({
     required String token,
     required String title,
     required String categoryId,
+    required String categoryName,
     required String description,
-    required String date,
-    required String time,
+    required String startDate,
+    required String endDate,
+    required String startTime,
+    required String endTime,
+    required String location,
     required bool isActive,
+    String status = 'upcoming',
+    bool notify24hBefore = true,
+    bool notify1hBefore = true,
+    bool notifyAtTime = true,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/events'),
@@ -51,10 +85,18 @@ class EventsRemoteDataSource {
       body: jsonEncode({
         'title': title,
         'category': categoryId,
+        'categoryName': categoryName,
         'description': description,
-        'date': date,
-        'time': time,
+        'startDate': startDate,
+        'endDate': endDate,
+        'startTime': startTime,
+        'endTime': endTime,
+        'location': location,
         'isActive': isActive,
+        'status': status,
+        'notify24hBefore': notify24hBefore,
+        'notify1hBefore': notify1hBefore,
+        'notifyAtTime': notifyAtTime,
       }),
     );
 
@@ -77,10 +119,18 @@ class EventsRemoteDataSource {
     required String id,
     required String title,
     required String categoryId,
+    required String categoryName,
     required String description,
-    required String date,
-    required String time,
+    required String startDate,
+    required String endDate,
+    required String startTime,
+    required String endTime,
+    required String location,
     required bool isActive,
+    String status = 'upcoming',
+    bool notify24hBefore = true,
+    bool notify1hBefore = true,
+    bool notifyAtTime = true,
   }) async {
     final response = await http.put(
       Uri.parse('$baseUrl/api/events/$id'),
@@ -91,10 +141,18 @@ class EventsRemoteDataSource {
       body: jsonEncode({
         'title': title,
         'category': categoryId,
+        'categoryName': categoryName,
         'description': description,
-        'date': date,
-        'time': time,
+        'startDate': startDate,
+        'endDate': endDate,
+        'startTime': startTime,
+        'endTime': endTime,
+        'location': location,
         'isActive': isActive,
+        'status': status,
+        'notify24hBefore': notify24hBefore,
+        'notify1hBefore': notify1hBefore,
+        'notifyAtTime': notifyAtTime,
       }),
     );
 
@@ -112,16 +170,20 @@ class EventsRemoteDataSource {
     throw Exception(body['message'] ?? 'Error al actualizar evento');
   }
 
-  Future<void> deleteEvent({
+  Future<void> toggleEventStatus({
     required String token,
     required String id,
+    required bool isActive,
   }) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/events/$id'),
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/events/$id/status'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
+      body: jsonEncode({
+        'isActive': isActive,
+      }),
     );
 
     final body = jsonDecode(response.body);
@@ -131,10 +193,10 @@ class EventsRemoteDataSource {
     }
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en deleteEvent -> token expirado');
+      print('🔒 HTTP 401 en toggleEventStatus -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
-    throw Exception(body['message'] ?? 'Error al eliminar evento');
+    throw Exception(body['message'] ?? 'Error al cambiar estado del evento');
   }
 }

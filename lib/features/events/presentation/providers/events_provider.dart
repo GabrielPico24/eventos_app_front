@@ -134,9 +134,19 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
   }) async {
     try {
       state = const AsyncValue.loading();
-
       final events = await datasource.getEvents(token: token);
+      state = AsyncValue.data(events);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 
+  Future<void> loadMyEvents({
+    required String token,
+  }) async {
+    try {
+      state = const AsyncValue.loading();
+      final events = await datasource.getMyEvents(token: token);
       state = AsyncValue.data(events);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -147,19 +157,35 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String token,
     required String title,
     required String categoryId,
+    required String categoryName,
     required String description,
-    required String date,
-    required String time,
+    required String startDate,
+    required String endDate,
+    required String startTime,
+    required String endTime,
+    required String location,
     required bool isActive,
+    String status = 'upcoming',
+    bool notify24hBefore = true,
+    bool notify1hBefore = true,
+    bool notifyAtTime = true,
   }) async {
     await datasource.createEvent(
       token: token,
       title: title,
       categoryId: categoryId,
+      categoryName: categoryName,
       description: description,
-      date: date,
-      time: time,
+      startDate: startDate,
+      endDate: endDate,
+      startTime: startTime,
+      endTime: endTime,
+      location: location,
       isActive: isActive,
+      status: status,
+      notify24hBefore: notify24hBefore,
+      notify1hBefore: notify1hBefore,
+      notifyAtTime: notifyAtTime,
     );
   }
 
@@ -168,30 +194,48 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String id,
     required String title,
     required String categoryId,
+    required String categoryName,
     required String description,
-    required String date,
-    required String time,
+    required String startDate,
+    required String endDate,
+    required String startTime,
+    required String endTime,
+    required String location,
     required bool isActive,
+    String status = 'upcoming',
+    bool notify24hBefore = true,
+    bool notify1hBefore = true,
+    bool notifyAtTime = true,
   }) async {
     await datasource.updateEvent(
       token: token,
       id: id,
       title: title,
       categoryId: categoryId,
+      categoryName: categoryName,
       description: description,
-      date: date,
-      time: time,
+      startDate: startDate,
+      endDate: endDate,
+      startTime: startTime,
+      endTime: endTime,
+      location: location,
       isActive: isActive,
+      status: status,
+      notify24hBefore: notify24hBefore,
+      notify1hBefore: notify1hBefore,
+      notifyAtTime: notifyAtTime,
     );
   }
 
-  Future<void> deleteEvent({
+  Future<void> toggleEventStatus({
     required String token,
     required String id,
+    required bool isActive,
   }) async {
-    await datasource.deleteEvent(
+    await datasource.toggleEventStatus(
       token: token,
       id: id,
+      isActive: isActive,
     );
   }
 
