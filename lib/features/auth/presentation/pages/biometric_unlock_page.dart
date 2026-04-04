@@ -1,4 +1,3 @@
-import 'package:event_app/features/auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';

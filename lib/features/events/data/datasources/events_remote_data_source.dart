@@ -65,11 +65,9 @@ class EventsRemoteDataSource {
     required String categoryId,
     required String categoryName,
     required String description,
-    required String startDate,
-    required String endDate,
-    required String startTime,
-    required String endTime,
-    required String location,
+    required String date,
+    required String time,
+    required String repeat,
     required bool isActive,
     String status = 'upcoming',
     bool notify24hBefore = true,
@@ -87,11 +85,9 @@ class EventsRemoteDataSource {
         'category': categoryId,
         'categoryName': categoryName,
         'description': description,
-        'startDate': startDate,
-        'endDate': endDate,
-        'startTime': startTime,
-        'endTime': endTime,
-        'location': location,
+        'date': date,
+        'time': time,
+        'repeat': repeat,
         'isActive': isActive,
         'status': status,
         'notify24hBefore': notify24hBefore,
@@ -102,12 +98,9 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return;
-    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en createEvent -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
@@ -121,11 +114,9 @@ class EventsRemoteDataSource {
     required String categoryId,
     required String categoryName,
     required String description,
-    required String startDate,
-    required String endDate,
-    required String startTime,
-    required String endTime,
-    required String location,
+    required String date,
+    required String time,
+    required String repeat,
     required bool isActive,
     String status = 'upcoming',
     bool notify24hBefore = true,
@@ -143,11 +134,9 @@ class EventsRemoteDataSource {
         'category': categoryId,
         'categoryName': categoryName,
         'description': description,
-        'startDate': startDate,
-        'endDate': endDate,
-        'startTime': startTime,
-        'endTime': endTime,
-        'location': location,
+        'date': date,
+        'time': time,
+        'repeat': repeat,
         'isActive': isActive,
         'status': status,
         'notify24hBefore': notify24hBefore,
@@ -158,12 +147,9 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return;
-    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en updateEvent -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 

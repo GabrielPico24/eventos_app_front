@@ -31,7 +31,7 @@ class AuthState {
     this.isAuthenticated = false,
     this.isSessionLocked = false,
     this.isRefreshingSession = false,
-    this.isCheckingStoredSession = false,
+    this.isCheckingStoredSession = true,
     this.role,
     this.token,
     this.refreshToken,
@@ -87,7 +87,9 @@ class AuthController extends StateNotifier<AuthState> {
     this.ref,
     this.repository,
     this.socketService,
-  ) : super(const AuthState());
+  ) : super(const AuthState()) {
+    Future.microtask(() => checkStoredSessionOnAppStart());
+  }
 
   void _cancelSessionTimer() {
     _sessionTimer?.cancel();
@@ -102,9 +104,8 @@ class AuthController extends StateNotifier<AuthState> {
       final payload = parts[1];
       final normalized = base64Url.normalize(payload);
       final payloadMap = jsonDecode(
-            utf8.decode(base64Url.decode(normalized)),
-          )
-          as Map<String, dynamic>;
+        utf8.decode(base64Url.decode(normalized)),
+      ) as Map<String, dynamic>;
 
       final exp = payloadMap['exp'];
       if (exp == null) return null;
@@ -155,13 +156,13 @@ class AuthController extends StateNotifier<AuthState> {
     required String role,
   }) async {
     await ref.read(secureStorageProvider).saveSession(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      name: name,
-      email: email,
-      role: role,
-      biometricEnabled: true,
-    );
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          name: name,
+          email: email,
+          role: role,
+          biometricEnabled: true,
+        );
   }
 
   Future<void> login({
@@ -198,6 +199,7 @@ class AuthController extends StateNotifier<AuthState> {
         email: response.user.email,
         isSessionLocked: false,
         isRefreshingSession: false,
+        isCheckingStoredSession: false,
       );
 
       await _persistSession(
@@ -219,6 +221,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: false,
+        isCheckingStoredSession: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
     }
@@ -241,6 +244,11 @@ class AuthController extends StateNotifier<AuthState> {
           isCheckingStoredSession: false,
           isAuthenticated: false,
           isSessionLocked: false,
+          token: null,
+          refreshToken: null,
+          name: null,
+          email: null,
+          role: null,
         );
         return;
       }
@@ -249,6 +257,20 @@ class AuthController extends StateNotifier<AuthState> {
       final name = await storage.readUserName();
       final email = await storage.readUserEmail();
       final roleString = await storage.readUserRole();
+
+      if (refreshToken == null || refreshToken.isEmpty) {
+        state = state.copyWith(
+          isCheckingStoredSession: false,
+          isAuthenticated: false,
+          isSessionLocked: false,
+          token: null,
+          refreshToken: null,
+          name: null,
+          email: null,
+          role: null,
+        );
+        return;
+      }
 
       final role = roleString == 'admin' ? UserRole.admin : UserRole.user;
 
@@ -280,7 +302,8 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: null,
       );
 
-      final biometricOk = await ref.read(biometricServiceProvider).authenticate();
+      final biometricOk =
+          await ref.read(biometricServiceProvider).authenticate();
 
       if (!biometricOk) {
         state = state.copyWith(
@@ -310,6 +333,7 @@ class AuthController extends StateNotifier<AuthState> {
         isSessionLocked: false,
         isRefreshingSession: false,
         isAuthenticated: true,
+        isCheckingStoredSession: false,
         errorMessage: null,
       );
 
@@ -334,6 +358,7 @@ class AuthController extends StateNotifier<AuthState> {
         isRefreshingSession: false,
         isAuthenticated: false,
         isSessionLocked: false,
+        isCheckingStoredSession: false,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
 
@@ -366,7 +391,8 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: null,
       );
 
-      final biometricOk = await ref.read(biometricServiceProvider).authenticate();
+      final biometricOk =
+          await ref.read(biometricServiceProvider).authenticate();
 
       if (!biometricOk) {
         state = state.copyWith(
@@ -396,6 +422,7 @@ class AuthController extends StateNotifier<AuthState> {
         isSessionLocked: false,
         isRefreshingSession: false,
         isAuthenticated: true,
+        isCheckingStoredSession: false,
         errorMessage: null,
       );
 
@@ -421,6 +448,7 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
         isAuthenticated: false,
         isSessionLocked: false,
+        isCheckingStoredSession: false,
       );
 
       return false;
@@ -433,7 +461,9 @@ class AuthController extends StateNotifier<AuthState> {
     _sessionExpiredHandled = false;
     socketService.disconnect();
     await ref.read(secureStorageProvider).clearSession();
-    state = const AuthState();
+    state = const AuthState(
+      isCheckingStoredSession: false,
+    );
   }
 
   void clearError() {

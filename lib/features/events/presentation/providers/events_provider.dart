@@ -104,8 +104,7 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         final current = state.valueOrNull ?? [];
         final map = Map<String, dynamic>.from(data);
 
-        final deletedId =
-            map['id']?.toString() ?? map['_id']?.toString() ?? '';
+        final deletedId = map['id']?.toString() ?? map['_id']?.toString() ?? '';
 
         if (deletedId.isEmpty) {
           print('⚠️ No llegó id en event:deleted');
@@ -159,11 +158,9 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String categoryId,
     required String categoryName,
     required String description,
-    required String startDate,
-    required String endDate,
-    required String startTime,
-    required String endTime,
-    required String location,
+    required String date,
+    required String time,
+    required String repeat,
     required bool isActive,
     String status = 'upcoming',
     bool notify24hBefore = true,
@@ -176,11 +173,9 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       categoryId: categoryId,
       categoryName: categoryName,
       description: description,
-      startDate: startDate,
-      endDate: endDate,
-      startTime: startTime,
-      endTime: endTime,
-      location: location,
+      date: date,
+      time: time,
+      repeat: repeat,
       isActive: isActive,
       status: status,
       notify24hBefore: notify24hBefore,
@@ -196,11 +191,9 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String categoryId,
     required String categoryName,
     required String description,
-    required String startDate,
-    required String endDate,
-    required String startTime,
-    required String endTime,
-    required String location,
+    required String date,
+    required String time,
+    required String repeat,
     required bool isActive,
     String status = 'upcoming',
     bool notify24hBefore = true,
@@ -214,11 +207,9 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       categoryId: categoryId,
       categoryName: categoryName,
       description: description,
-      startDate: startDate,
-      endDate: endDate,
-      startTime: startTime,
-      endTime: endTime,
-      location: location,
+      date: date,
+      time: time,
+      repeat: repeat,
       isActive: isActive,
       status: status,
       notify24hBefore: notify24hBefore,

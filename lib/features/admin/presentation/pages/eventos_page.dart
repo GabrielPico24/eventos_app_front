@@ -621,7 +621,7 @@ class _EventosPageState extends ConsumerState<EventosPage> {
     if (confirmed != true) return;
 
     try {
-      final authState = ref.read(authControllerProvider);
+      final authState = ref.read(Provider);
       final token = authState.token ?? '';
 
       if (token.isEmpty) {

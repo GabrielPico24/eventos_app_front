@@ -37,11 +37,9 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
     return events.where((event) {
       return event.title.toLowerCase().contains(text) ||
           event.categoryName.toLowerCase().contains(text) ||
-          event.startDate.toLowerCase().contains(text) ||
-          event.endDate.toLowerCase().contains(text) ||
-          event.startTime.toLowerCase().contains(text) ||
-          event.endTime.toLowerCase().contains(text) ||
-          event.location.toLowerCase().contains(text) ||
+          event.date.toLowerCase().contains(text) ||
+          event.time.toLowerCase().contains(text) ||
+          _buildRepeatLabel(event.repeat).toLowerCase().contains(text) ||
           event.createdByName.toLowerCase().contains(text) ||
           event.status.toLowerCase().contains(text);
     }).toList();
@@ -354,10 +352,10 @@ class _EventoAdminCard extends StatelessWidget {
                     : const Color(0xFFF0F2F7),
               ),
               _InfoBadge(
-  label: _buildStatusLabel(evento.status),
-  color: const Color(0xFF3557D6),
-  background: const Color(0xFFEAF0FF),
-),
+                label: _buildStatusLabel(evento.status),
+                color: const Color(0xFF3557D6),
+                background: const Color(0xFFEAF0FF),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -394,7 +392,7 @@ class _EventoAdminCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${evento.startDate} - ${evento.endDate}',
+                  evento.date,
                   style: const TextStyle(
                     fontSize: 13.5,
                     color: Color(0xFF4D5875),
@@ -415,7 +413,7 @@ class _EventoAdminCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${evento.startTime} - ${evento.endTime}',
+                  evento.time,
                   style: const TextStyle(
                     fontSize: 13.5,
                     color: Color(0xFF4D5875),
@@ -425,29 +423,27 @@ class _EventoAdminCard extends StatelessWidget {
               ),
             ],
           ),
-          if (evento.location.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  size: 18,
-                  color: Color(0xFF2D4ECF),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    evento.location,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: Color(0xFF4D5875),
-                      fontWeight: FontWeight.w600,
-                    ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.repeat_rounded,
+                size: 18,
+                color: Color(0xFF2D4ECF),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _buildRepeatLabel(evento.repeat),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF59627A),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -696,6 +692,7 @@ class _EmptyEventosState extends StatelessWidget {
     );
   }
 }
+
 String _buildStatusLabel(String status) {
   switch (status.toLowerCase()) {
     case 'upcoming':
@@ -706,5 +703,36 @@ String _buildStatusLabel(String status) {
       return 'Cancelado';
     default:
       return status;
+  }
+}
+
+String _buildRepeatLabel(String value) {
+  switch (value.toLowerCase()) {
+    case 'never':
+      return 'Nunca';
+    case 'hourly':
+      return 'Cada hora';
+    case 'daily':
+      return 'Cada día';
+    case 'weekdays':
+      return 'Entre semana';
+    case 'weekends':
+      return 'Fines de semana';
+    case 'weekly':
+      return 'Cada semana';
+    case 'biweekly':
+      return 'Cada dos semanas';
+    case 'monthly':
+      return 'Cada mes';
+    case 'quarterly':
+      return 'Cada 3 meses';
+    case 'semiannual':
+      return 'Cada 6 meses';
+    case 'yearly':
+      return 'Cada año';
+    case 'custom':
+      return 'Personalizado';
+    default:
+      return 'Nunca';
   }
 }

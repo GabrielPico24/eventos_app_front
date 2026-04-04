@@ -46,13 +46,32 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
     return events.where((event) {
       return event.title.toLowerCase().contains(text) ||
           event.categoryName.toLowerCase().contains(text) ||
-          event.startDate.toLowerCase().contains(text) ||
-          event.endDate.toLowerCase().contains(text) ||
-          event.startTime.toLowerCase().contains(text) ||
-          event.endTime.toLowerCase().contains(text) ||
-          event.location.toLowerCase().contains(text) ||
+          event.date.toLowerCase().contains(text) ||
+          event.time.toLowerCase().contains(text) ||
+          _buildRepeatLabel(event.repeat).toLowerCase().contains(text) ||
           event.status.toLowerCase().contains(text);
     }).toList();
+  }
+
+  final List<Map<String, String>> _repeatOptions = const [
+    {'value': 'never', 'label': 'Nunca'},
+    {'value': 'hourly', 'label': 'Cada hora'},
+    {'value': 'daily', 'label': 'Cada día'},
+    {'value': 'weekdays', 'label': 'Entre semana'},
+    {'value': 'weekends', 'label': 'Fines de semana'},
+    {'value': 'weekly', 'label': 'Cada semana'},
+    {'value': 'biweekly', 'label': 'Cada dos semanas'},
+    {'value': 'monthly', 'label': 'Cada mes'},
+    {'value': 'quarterly', 'label': 'Cada 3 meses'},
+    {'value': 'semiannual', 'label': 'Cada 6 meses'},
+    {'value': 'yearly', 'label': 'Cada año'},
+    {'value': 'custom', 'label': 'Personalizado'},
+  ];
+
+  String _repeatLabel(String value) {
+    final found = _repeatOptions.where((e) => e['value'] == value).toList();
+    if (found.isEmpty) return 'Nunca';
+    return found.first['label']!;
   }
 
   Future<void> _openEventoDialog({
@@ -64,16 +83,11 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
         TextEditingController(text: isEdit ? evento.title : '');
     final descripcionController =
         TextEditingController(text: isEdit ? evento.description : '');
-    final fechaInicioController =
-        TextEditingController(text: isEdit ? evento.startDate : '');
-    final fechaFinController =
-        TextEditingController(text: isEdit ? evento.endDate : '');
-    final horaInicioController =
-        TextEditingController(text: isEdit ? evento.startTime : '');
-    final horaFinController =
-        TextEditingController(text: isEdit ? evento.endTime : '');
-    final ubicacionController =
-        TextEditingController(text: isEdit ? evento.location : '');
+    final fechaController =
+        TextEditingController(text: isEdit ? evento.date : '');
+    final horaController =
+        TextEditingController(text: isEdit ? evento.time : '');
+    String repetirSeleccionado = isEdit ? evento.repeat : 'never';
 
     bool activo = isEdit ? evento.isActive : true;
     String? categoriaSeleccionadaId = isEdit ? evento.category.id : null;
@@ -238,87 +252,333 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  const _InputLabel('Fecha inicio'),
+                                  const _InputLabel('Fecha'),
                                   const SizedBox(height: 8),
                                   TextFormField(
-                                    controller: fechaInicioController,
-                                    keyboardType: TextInputType.datetime,
+                                    controller: fechaController,
+                                    readOnly: true,
                                     decoration: _inputDecoration(
                                       hint: 'Ej: 25/03/2026',
-                                      icon: Icons.calendar_month_outlined,
+                                      icon: Icons.calendar_today_outlined,
                                     ),
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: DateTime.now(),
+                                        firstDate: DateTime(2024),
+                                        lastDate: DateTime(2100),
+                                        locale: const Locale('es', 'ES'),
+                                        builder: (context, child) {
+                                          return Theme(
+                                            data: Theme.of(context).copyWith(
+                                              colorScheme:
+                                                  const ColorScheme.light(
+                                                primary: Color(0xFF2D4ECF),
+                                                onPrimary: Colors.white,
+                                                surface: Colors.white,
+                                                onSurface: Color(0xFF181A20),
+                                              ),
+                                              textButtonTheme:
+                                                  TextButtonThemeData(
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor:
+                                                      const Color(0xFF2D4ECF),
+                                                ),
+                                              ),
+                                              datePickerTheme:
+                                                  DatePickerThemeData(
+                                                backgroundColor: Colors.white,
+                                                surfaceTintColor: Colors.white,
+                                                headerBackgroundColor:
+                                                    Colors.white,
+                                                headerForegroundColor:
+                                                    const Color(0xFF181A20),
+                                                dayStyle: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                dayForegroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return Colors.white;
+                                                  }
+                                                  if (states.contains(
+                                                      WidgetState.disabled)) {
+                                                    return const Color(
+                                                        0xFFB8BFCC);
+                                                  }
+                                                  return const Color(
+                                                      0xFF181A20);
+                                                }),
+                                                dayBackgroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return const Color(
+                                                        0xFF2D4ECF);
+                                                  }
+                                                  return null;
+                                                }),
+                                                todayForegroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return Colors.white;
+                                                  }
+                                                  return const Color(
+                                                      0xFF2D4ECF);
+                                                }),
+                                                todayBackgroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return const Color(
+                                                        0xFF2D4ECF);
+                                                  }
+                                                  return Colors.white;
+                                                }),
+                                                todayBorder: const BorderSide(
+                                                  color: Color(0xFF2D4ECF),
+                                                  width: 1.5,
+                                                ),
+                                                yearForegroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return Colors.white;
+                                                  }
+                                                  return const Color(
+                                                      0xFF181A20);
+                                                }),
+                                                yearBackgroundColor:
+                                                    WidgetStateProperty
+                                                        .resolveWith<Color?>(
+                                                            (states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return const Color(
+                                                        0xFF2D4ECF);
+                                                  }
+                                                  return null;
+                                                }),
+                                                cancelButtonStyle: ButtonStyle(
+                                                  foregroundColor:
+                                                      const WidgetStatePropertyAll(
+                                                          Color(0xFF2D4ECF)),
+                                                ),
+                                                confirmButtonStyle: ButtonStyle(
+                                                  foregroundColor:
+                                                      const WidgetStatePropertyAll(
+                                                          Color(0xFF2D4ECF)),
+                                                ),
+                                              ),
+                                            ),
+                                            child: child!,
+                                          );
+                                        },
+                                      );
+
+                                      if (picked != null) {
+                                        final day = picked.day
+                                            .toString()
+                                            .padLeft(2, '0');
+                                        final month = picked.month
+                                            .toString()
+                                            .padLeft(2, '0');
+                                        final year = picked.year.toString();
+                                        fechaController.text =
+                                            '$day/$month/$year';
+                                      }
+                                    },
                                     validator: (value) {
                                       if (value == null ||
                                           value.trim().isEmpty) {
-                                        return 'La fecha de inicio es obligatoria';
+                                        return 'La fecha es obligatoria';
                                       }
                                       return null;
                                     },
                                   ),
                                   const SizedBox(height: 16),
-                                  const _InputLabel('Fecha fin'),
+                                  const _InputLabel('Hora'),
                                   const SizedBox(height: 8),
                                   TextFormField(
-                                    controller: fechaFinController,
-                                    keyboardType: TextInputType.datetime,
+                                    controller: horaController,
+                                    readOnly: true,
                                     decoration: _inputDecoration(
-                                      hint: 'Ej: 25/03/2026',
-                                      icon: Icons.event_available_outlined,
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'La fecha de fin es obligatoria';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const _InputLabel('Hora inicio'),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: horaInicioController,
-                                    keyboardType: TextInputType.datetime,
-                                    decoration: _inputDecoration(
-                                      hint: 'Ej: 09:00 AM',
+                                      hint: 'Ej: 22:00',
                                       icon: Icons.access_time_rounded,
                                     ),
+                                    onTap: () async {
+                                      final picked = await showTimePicker(
+                                        context: context,
+                                        initialTime: TimeOfDay.now(),
+                                        builder: (context, child) {
+                                          return MediaQuery(
+                                            data:
+                                                MediaQuery.of(context).copyWith(
+                                              alwaysUse24HourFormat: true,
+                                            ),
+                                            child: Theme(
+                                              data: Theme.of(context).copyWith(
+                                                colorScheme:
+                                                    const ColorScheme.light(
+                                                  primary: Color(0xFF2D4ECF),
+                                                  onPrimary: Colors.white,
+                                                  onSurface: Color(0xFF181A20),
+                                                  surface: Colors.white,
+                                                ),
+                                                textButtonTheme:
+                                                    TextButtonThemeData(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        const Color(0xFF2D4ECF),
+                                                  ),
+                                                ),
+                                                timePickerTheme:
+                                                    TimePickerThemeData(
+                                                  backgroundColor: Colors.white,
+                                                  hourMinuteColor:
+                                                      const Color(0xFFF3F6FF),
+                                                  hourMinuteTextColor:
+                                                      const Color(0xFF181A20),
+                                                  dayPeriodColor:
+                                                      const Color(0xFFEAF0FF),
+                                                  dayPeriodTextColor:
+                                                      const Color(0xFF181A20),
+                                                  dialBackgroundColor:
+                                                      const Color(0xFFF7F8FC),
+                                                  dialHandColor:
+                                                      const Color(0xFF2D4ECF),
+                                                  dialTextColor:
+                                                      WidgetStateColor
+                                                          .resolveWith(
+                                                              (states) {
+                                                    if (states.contains(
+                                                        WidgetState.selected)) {
+                                                      return Colors.white;
+                                                    }
+                                                    return const Color(
+                                                        0xFF181A20);
+                                                  }),
+                                                  dialTextStyle:
+                                                      const TextStyle(
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  entryModeIconColor:
+                                                      const Color(0xFF2D4ECF),
+                                                  helpTextStyle:
+                                                      const TextStyle(
+                                                    color: Color(0xFF181A20),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  cancelButtonStyle:
+                                                      const ButtonStyle(
+                                                    foregroundColor:
+                                                        WidgetStatePropertyAll(
+                                                            Color(0xFF2D4ECF)),
+                                                  ),
+                                                  confirmButtonStyle:
+                                                      const ButtonStyle(
+                                                    foregroundColor:
+                                                        WidgetStatePropertyAll(
+                                                            Color(0xFF2D4ECF)),
+                                                  ),
+                                                ),
+                                              ),
+                                              child: child!,
+                                            ),
+                                          );
+                                        },
+                                      );
+
+                                      if (picked != null) {
+                                        final localizations =
+                                            MaterialLocalizations.of(context);
+                                        horaController.text =
+                                            localizations.formatTimeOfDay(
+                                          picked,
+                                          alwaysUse24HourFormat: true,
+                                        );
+                                      }
+
+                                      if (picked != null) {
+                                        final localizations =
+                                            MaterialLocalizations.of(context);
+                                        horaController.text =
+                                            localizations.formatTimeOfDay(
+                                          picked,
+                                          alwaysUse24HourFormat: false,
+                                        );
+                                      }
+                                    },
                                     validator: (value) {
                                       if (value == null ||
                                           value.trim().isEmpty) {
-                                        return 'La hora de inicio es obligatoria';
+                                        return 'La hora es obligatoria';
                                       }
                                       return null;
                                     },
                                   ),
                                   const SizedBox(height: 16),
-                                  const _InputLabel('Hora fin'),
+                                  const _InputLabel('Repetir'),
                                   const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: horaFinController,
-                                    keyboardType: TextInputType.datetime,
-                                    decoration: _inputDecoration(
-                                      hint: 'Ej: 10:00 AM',
-                                      icon: Icons.schedule_rounded,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
                                     ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'La hora de fin es obligatoria';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const _InputLabel('Ubicación'),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: ubicacionController,
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    decoration: _inputDecoration(
-                                      hint: 'Ej: Sala principal',
-                                      icon: Icons.location_on_outlined,
+                                    child: StatefulBuilder(
+                                      builder: (context, setLocalState) {
+                                        return DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: repetirSeleccionado,
+                                            isExpanded: true,
+                                            borderRadius:
+                                                BorderRadius.circular(18),
+                                            icon: const Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: Color(0xFF2D4ECF),
+                                            ),
+                                            items: _repeatOptions.map((item) {
+                                              return DropdownMenuItem<String>(
+                                                value: item['value'],
+                                                child: Text(
+                                                  item['label']!,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    color: Color(0xFF181A20),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (value) {
+                                              if (value == null) return;
+                                              setLocalState(() {
+                                                repetirSeleccionado = value;
+                                              });
+                                            },
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
                                   const SizedBox(height: 16),
@@ -368,8 +628,7 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                         ),
                                         Switch(
                                           value: activo,
-                                          activeColor:
-                                              const Color(0xFF2D4ECF),
+                                          activeColor: const Color(0xFF2D4ECF),
                                           onChanged: (value) {
                                             setModalState(() {
                                               activo = value;
@@ -441,13 +700,12 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                           .notifier)
                                                       .updateEvent(
                                                         token: token,
-                                                        id: evento.id,
+                                                        id: evento!.id,
                                                         title: tituloController
                                                             .text
                                                             .trim(),
                                                         categoryId:
-                                                            categoriaSeleccionada
-                                                                .id,
+                                                            categoriaSeleccionadaId!,
                                                         categoryName:
                                                             categoriaSeleccionada
                                                                 .name,
@@ -455,26 +713,14 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                             descripcionController
                                                                 .text
                                                                 .trim(),
-                                                        startDate:
-                                                            fechaInicioController
-                                                                .text
-                                                                .trim(),
-                                                        endDate:
-                                                            fechaFinController
-                                                                .text
-                                                                .trim(),
-                                                        startTime:
-                                                            horaInicioController
-                                                                .text
-                                                                .trim(),
-                                                        endTime:
-                                                            horaFinController
-                                                                .text
-                                                                .trim(),
-                                                        location:
-                                                            ubicacionController
-                                                                .text
-                                                                .trim(),
+                                                        date: fechaController
+                                                            .text
+                                                            .trim(),
+                                                        time: horaController
+                                                            .text
+                                                            .trim(),
+                                                        repeat:
+                                                            repetirSeleccionado,
                                                         isActive: activo,
                                                       );
                                                 } else {
@@ -487,8 +733,7 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                             .text
                                                             .trim(),
                                                         categoryId:
-                                                            categoriaSeleccionada
-                                                                .id,
+                                                            categoriaSeleccionadaId!,
                                                         categoryName:
                                                             categoriaSeleccionada
                                                                 .name,
@@ -496,26 +741,14 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                             descripcionController
                                                                 .text
                                                                 .trim(),
-                                                        startDate:
-                                                            fechaInicioController
-                                                                .text
-                                                                .trim(),
-                                                        endDate:
-                                                            fechaFinController
-                                                                .text
-                                                                .trim(),
-                                                        startTime:
-                                                            horaInicioController
-                                                                .text
-                                                                .trim(),
-                                                        endTime:
-                                                            horaFinController
-                                                                .text
-                                                                .trim(),
-                                                        location:
-                                                            ubicacionController
-                                                                .text
-                                                                .trim(),
+                                                        date: fechaController
+                                                            .text
+                                                            .trim(),
+                                                        time: horaController
+                                                            .text
+                                                            .trim(),
+                                                        repeat:
+                                                            repetirSeleccionado,
                                                         isActive: activo,
                                                       );
                                                 }
@@ -724,8 +957,7 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                         const SizedBox(height: 18),
                         ElevatedButton(
                           onPressed: () async {
-                            final authState =
-                                ref.read(authControllerProvider);
+                            final authState = ref.read(authControllerProvider);
                             final token = authState.token ?? '';
 
                             if (token.isEmpty) return;
@@ -969,7 +1201,7 @@ class _SearchField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Buscar por título, categoría, fecha, hora o ubicación',
+        hintText: 'Buscar por título, categoría, fecha, hora o repetición',
         hintStyle: const TextStyle(
           color: Color(0xFFA1A7B8),
           fontSize: 15,
@@ -1236,10 +1468,10 @@ class _EventoCard extends StatelessWidget {
                     : const Color(0xFFF0F2F7),
               ),
               _InfoBadge(
-  label: _buildStatusLabel(evento.status),
-  color: const Color(0xFF3557D6),
-  background: const Color(0xFFEAF0FF),
-),
+                label: _buildStatusLabel(evento.status),
+                color: const Color(0xFF3557D6),
+                background: const Color(0xFFEAF0FF),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1253,10 +1485,10 @@ class _EventoCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${evento.startDate} - ${evento.endDate}',
+                  evento.date,
                   style: const TextStyle(
-                    fontSize: 13.5,
-                    color: Color(0xFF4D5875),
+                    fontSize: 14,
+                    color: Color(0xFF59627A),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1274,39 +1506,37 @@ class _EventoCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${evento.startTime} - ${evento.endTime}',
+                  evento.time,
                   style: const TextStyle(
-                    fontSize: 13.5,
-                    color: Color(0xFF4D5875),
+                    fontSize: 14,
+                    color: Color(0xFF59627A),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          if (evento.location.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  size: 18,
-                  color: Color(0xFF2D4ECF),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    evento.location,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: Color(0xFF4D5875),
-                      fontWeight: FontWeight.w600,
-                    ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.repeat_rounded,
+                size: 18,
+                color: Color(0xFF2D4ECF),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _buildRepeatLabel(evento.repeat),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF59627A),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1405,6 +1635,7 @@ class _InputLabel extends StatelessWidget {
     );
   }
 }
+
 String _buildStatusLabel(String status) {
   switch (status.toLowerCase()) {
     case 'upcoming':
@@ -1415,5 +1646,36 @@ String _buildStatusLabel(String status) {
       return 'Cancelado';
     default:
       return status;
+  }
+}
+
+String _buildRepeatLabel(String value) {
+  switch (value.toLowerCase()) {
+    case 'never':
+      return 'Nunca';
+    case 'hourly':
+      return 'Cada hora';
+    case 'daily':
+      return 'Cada día';
+    case 'weekdays':
+      return 'Entre semana';
+    case 'weekends':
+      return 'Fines de semana';
+    case 'weekly':
+      return 'Cada semana';
+    case 'biweekly':
+      return 'Cada dos semanas';
+    case 'monthly':
+      return 'Cada mes';
+    case 'quarterly':
+      return 'Cada 3 meses';
+    case 'semiannual':
+      return 'Cada 6 meses';
+    case 'yearly':
+      return 'Cada año';
+    case 'custom':
+      return 'Personalizado';
+    default:
+      return 'Nunca';
   }
 }
