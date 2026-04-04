@@ -16,7 +16,7 @@ class UserHomePage extends ConsumerWidget {
     final horizontalPadding = width * 0.06;
     final crossAxisCount = isTablet ? 3 : (width < 360 ? 1 : 2);
     final childAspectRatio = isTablet ? 1.08 : 0.86;
-final authState = ref.watch(authControllerProvider);
+    final authState = ref.watch(authControllerProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -32,9 +32,9 @@ final authState = ref.watch(authControllerProvider);
                   8,
                 ),
                 child: _UserHeader(
-  width: width,
-  userName: authState.name,
-),
+                  width: width,
+                  userName: authState.name,
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -481,7 +481,7 @@ class _UserModuleCard extends StatelessWidget {
                     color: Color(0xFF181A20),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
                 Expanded(
                   child: Text(
                     subtitle,

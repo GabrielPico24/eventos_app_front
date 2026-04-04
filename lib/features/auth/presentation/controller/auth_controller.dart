@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:event_app/core/services/notification_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:event_app/core/config/env.dart';
 import 'package:event_app/core/providers/app_providers.dart';
+import 'package:event_app/core/services/push_registration_service.dart';
 import 'package:event_app/core/services/socket_service.dart';
 import 'package:event_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:event_app/features/events/presentation/providers/events_provider.dart';
@@ -165,6 +167,17 @@ class AuthController extends StateNotifier<AuthState> {
         );
   }
 
+  Future<void> _syncPushToken(String accessToken) async {
+    try {
+      await ref.read(pushRegistrationServiceProvider).initForLoggedUser(
+            accessToken: accessToken,
+          );
+      print('✅ FCM sincronizado correctamente');
+    } catch (e) {
+      print('⚠️ Error sincronizando FCM: $e');
+    }
+  }
+
   Future<void> login({
     required String email,
     required String password,
@@ -217,6 +230,8 @@ class AuthController extends StateNotifier<AuthState> {
         baseUrl: Env.baseUrl,
         token: response.accessToken,
       );
+      await NotificationService.instance.requestPermissions();
+      await _syncPushToken(response.accessToken);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -348,6 +363,8 @@ class AuthController extends StateNotifier<AuthState> {
       ref.read(categoriesProvider.notifier).rebindSocketListeners();
       ref.read(usersControllerProvider.notifier).rebindSocketListeners();
 
+      await _syncPushToken(newAccessToken);
+
       return true;
     } catch (e) {
       print('❌ Error restaurando sesión: $e');
@@ -437,6 +454,8 @@ class AuthController extends StateNotifier<AuthState> {
       ref.read(categoriesProvider.notifier).rebindSocketListeners();
       ref.read(usersControllerProvider.notifier).rebindSocketListeners();
 
+      await _syncPushToken(newAccessToken);
+
       return true;
     } catch (e) {
       print('❌ Error renovando sesión: $e');
@@ -457,10 +476,61 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     print('🚪 CERRANDO SESIÓN...');
+
+    String? currentToken = state.token;
+    currentToken ??= await ref.read(secureStorageProvider).readAccessToken();
+
+    print('🪪 Token para logout => $currentToken');
+
+    try {
+      String? validAccessToken = currentToken;
+
+      final expiryDate =
+          currentToken != null ? _getTokenExpiryDate(currentToken) : null;
+
+      final isExpired =
+          expiryDate == null || expiryDate.isBefore(DateTime.now());
+
+      if (isExpired) {
+        print('⚠️ Access token expirado en logout, intentando refresh...');
+
+        String? currentRefreshToken = state.refreshToken;
+        currentRefreshToken ??=
+            await ref.read(secureStorageProvider).readRefreshToken();
+
+        if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
+          final newAccessToken = await repository.refreshToken(
+            refreshToken: currentRefreshToken,
+          );
+
+          print('✅ Nuevo access token obtenido para logout');
+
+          validAccessToken = newAccessToken;
+
+          await ref
+              .read(secureStorageProvider)
+              .updateAccessToken(newAccessToken);
+
+          state = state.copyWith(token: newAccessToken);
+        }
+      }
+
+      if (validAccessToken != null && validAccessToken.isNotEmpty) {
+        await ref.read(pushRegistrationServiceProvider).disposeForLogout(
+              accessToken: validAccessToken,
+            );
+      } else {
+        print('⚠️ No había accessToken disponible para eliminar FCM');
+      }
+    } catch (e) {
+      print('⚠️ Error eliminando token FCM en logout: $e');
+    }
+
     _cancelSessionTimer();
     _sessionExpiredHandled = false;
     socketService.disconnect();
     await ref.read(secureStorageProvider).clearSession();
+
     state = const AuthState(
       isCheckingStoredSession: false,
     );

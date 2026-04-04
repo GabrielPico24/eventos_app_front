@@ -1,4 +1,5 @@
 import 'package:event_app/core/providers/app_providers.dart';
+import 'package:event_app/core/services/notification_service.dart';
 import 'package:event_app/core/services/socket_service.dart';
 import 'package:event_app/features/events/data/datasources/events_remote_data_source.dart';
 import 'package:event_app/features/events/data/models/event_model.dart';
@@ -36,11 +37,15 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     _initSocketListeners();
   }
 
+  void _log(String message) {
+    print(message);
+  }
+
   void _initSocketListeners() {
     if (_socketListenersInitialized) return;
     _socketListenersInitialized = true;
 
-    print('🟢 SOCKET: listeners de eventos configurados');
+    _log('🟢 SOCKET: listeners de eventos configurados');
 
     socketService.off('event:created');
     socketService.off('event:updated');
@@ -48,30 +53,31 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
 
     socketService.on('event:created', (data) {
       try {
-        print('🔥 SOCKET RECIBIDO -> event:created');
-        print('📦 DATA: $data');
+        _log('🔥 SOCKET RECIBIDO -> event:created');
+        _log('📦 DATA: $data');
 
         final current = state.valueOrNull ?? [];
         final event = EventModel.fromJson(Map<String, dynamic>.from(data));
 
         final exists = current.any((e) => e.id == event.id);
         if (exists) {
-          print('⚠️ Evento ya existe, no se agrega duplicado');
+          _log('⚠️ Evento ya existe, no se agrega duplicado');
           return;
         }
 
-        print('✅ Evento agregado al estado: ${event.id}');
         state = AsyncValue.data([event, ...current]);
+
+        Future.microtask(() => _syncSingleEventFromModel(event));
       } catch (e, st) {
-        print('❌ Error procesando event:created => $e');
+        _log('❌ Error procesando event:created => $e');
         state = AsyncValue.error(e, st);
       }
     });
 
     socketService.on('event:updated', (data) {
       try {
-        print('🟡 SOCKET RECIBIDO -> event:updated');
-        print('📦 DATA: $data');
+        _log('🟡 SOCKET RECIBIDO -> event:updated');
+        _log('📦 DATA: $data');
 
         final current = state.valueOrNull ?? [];
         final updated = EventModel.fromJson(Map<String, dynamic>.from(data));
@@ -79,8 +85,8 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         final exists = current.any((event) => event.id == updated.id);
 
         if (!exists) {
-          print('⚠️ Evento actualizado no existe en estado, se agrega');
           state = AsyncValue.data([updated, ...current]);
+          Future.microtask(() => _syncSingleEventFromModel(updated));
           return;
         }
 
@@ -88,18 +94,19 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
           return event.id == updated.id ? updated : event;
         }).toList();
 
-        print('✅ Evento actualizado en estado: ${updated.id}');
         state = AsyncValue.data(newList);
+
+        Future.microtask(() => _syncSingleEventFromModel(updated));
       } catch (e, st) {
-        print('❌ Error procesando event:updated => $e');
+        _log('❌ Error procesando event:updated => $e');
         state = AsyncValue.error(e, st);
       }
     });
 
     socketService.on('event:deleted', (data) {
       try {
-        print('🔴 SOCKET RECIBIDO -> event:deleted');
-        print('📦 DATA: $data');
+        _log('🔴 SOCKET RECIBIDO -> event:deleted');
+        _log('📦 DATA: $data');
 
         final current = state.valueOrNull ?? [];
         final map = Map<String, dynamic>.from(data);
@@ -107,25 +114,133 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
         final deletedId = map['id']?.toString() ?? map['_id']?.toString() ?? '';
 
         if (deletedId.isEmpty) {
-          print('⚠️ No llegó id en event:deleted');
+          _log('⚠️ No llegó id en event:deleted');
           return;
         }
 
         final newList = current.where((e) => e.id != deletedId).toList();
-
-        print('🗑️ Evento eliminado del estado: $deletedId');
         state = AsyncValue.data(newList);
+
+        Future.microtask(
+            () => NotificationService.instance.cancelByEventId(deletedId));
       } catch (e, st) {
-        print('❌ Error procesando event:deleted => $e');
+        _log('❌ Error procesando event:deleted => $e');
         state = AsyncValue.error(e, st);
       }
     });
   }
 
   void rebindSocketListeners() {
-    print('🔄 Reenlazando listeners de eventos...');
+    _log('🔄 Reenlazando listeners de eventos...');
     _socketListenersInitialized = false;
     _initSocketListeners();
+  }
+
+  DateTime _parseEventDateTime(String date, String time) {
+    final normalizedDate = date.trim();
+    final normalizedTime = time.trim().toUpperCase();
+
+    try {
+      late int day;
+      late int month;
+      late int year;
+
+      if (normalizedDate.contains('/')) {
+        final dateParts = normalizedDate.split('/');
+        if (dateParts.length != 3) {
+          throw Exception('Formato de fecha inválido: $date');
+        }
+
+        day = int.parse(dateParts[0]);
+        month = int.parse(dateParts[1]);
+        year = int.parse(dateParts[2]);
+      } else if (normalizedDate.contains('-')) {
+        final dateParts = normalizedDate.split('-');
+        if (dateParts.length != 3) {
+          throw Exception('Formato de fecha inválido: $date');
+        }
+
+        year = int.parse(dateParts[0]);
+        month = int.parse(dateParts[1]);
+        day = int.parse(dateParts[2]);
+      } else {
+        throw Exception('Formato de fecha inválido: $date');
+      }
+
+      int hour = 0;
+      int minute = 0;
+
+      if (normalizedTime.contains('AM') || normalizedTime.contains('PM')) {
+        final clean = normalizedTime.replaceAll(' ', '');
+        final isPm = clean.contains('PM');
+        final timeOnly = clean.replaceAll('AM', '').replaceAll('PM', '');
+        final timeParts = timeOnly.split(':');
+
+        hour = int.parse(timeParts[0]);
+        minute = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
+
+        if (isPm && hour != 12) hour += 12;
+        if (!isPm && hour == 12) hour = 0;
+      } else {
+        final timeParts = normalizedTime.split(':');
+        hour = int.parse(timeParts[0]);
+        minute = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
+      }
+
+      return DateTime(year, month, day, hour, minute);
+    } catch (e) {
+      _log('❌ Error parseando fecha/hora del evento: $e');
+      rethrow;
+    }
+  }
+
+  LocalNotificationEvent _toLocalNotificationEvent(EventModel event) {
+    return LocalNotificationEvent(
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      dateTime: _parseEventDateTime(event.date, event.time),
+      repeat: event.repeat,
+      isActive: event.isActive,
+      notify24hBefore: event.notify24hBefore,
+      notify1hBefore: event.notify1hBefore,
+      notifyAtTime: event.notifyAtTime,
+    );
+  }
+
+  Future<void> _syncSingleEventFromModel(EventModel event) async {
+    try {
+      final localEvent = _toLocalNotificationEvent(event);
+      print('🔄 Iniciando sync local para evento: ${event.id}');
+      await NotificationService.instance.syncSingleEvent(localEvent);
+    } catch (e) {
+      print('⚠️ Se omitió evento ${event.id} por error de parseo/sync: $e');
+    } finally {
+      print('✅ Sync local finalizado para evento: ${event.id}');
+    }
+  }
+
+  Future<void> _resyncNotificationsFromCurrentState() async {
+    try {
+      final events = state.valueOrNull ?? [];
+      final localEvents = <LocalNotificationEvent>[];
+
+      for (final event in events) {
+        try {
+          localEvents.add(_toLocalNotificationEvent(event));
+        } catch (e) {
+          _log('⚠️ Se omitió evento ${event.id} por error de parseo: $e');
+        }
+      }
+
+      await NotificationService.instance.resyncAllEvents(
+        events: localEvents,
+      );
+
+      _log('🔔 Notificaciones locales resincronizadas');
+    } catch (e) {
+      _log('❌ Error resincronizando notificaciones: $e');
+    }
   }
 
   Future<void> loadEvents({
@@ -135,6 +250,8 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       state = const AsyncValue.loading();
       final events = await datasource.getEvents(token: token);
       state = AsyncValue.data(events);
+
+      await _resyncNotificationsFromCurrentState();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -147,6 +264,8 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       state = const AsyncValue.loading();
       final events = await datasource.getMyEvents(token: token);
       state = AsyncValue.data(events);
+
+      await _resyncNotificationsFromCurrentState();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
