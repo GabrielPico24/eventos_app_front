@@ -1,5 +1,33 @@
 import 'package:event_app/features/categories/data/models/category_model.dart';
 
+class AssignedUserModel {
+  final String user;
+  final String name;
+  final String email;
+
+  AssignedUserModel({
+    required this.user,
+    required this.name,
+    required this.email,
+  });
+
+  factory AssignedUserModel.fromJson(Map<String, dynamic> json) {
+    return AssignedUserModel(
+      user: (json['user'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user': user,
+      'name': name,
+      'email': email,
+    };
+  }
+}
+
 class EventModel {
   final String id;
   final String title;
@@ -16,6 +44,7 @@ class EventModel {
   final bool notifyAtTime;
   final CategoryModel category;
   final String categoryName;
+  final List<AssignedUserModel> assignedUsers;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -35,12 +64,24 @@ class EventModel {
     required this.notifyAtTime,
     required this.category,
     required this.categoryName,
+    required this.assignedUsers,
     this.createdAt,
     this.updatedAt,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     final categoryJson = json['category'];
+    final assignedUsersJson = json['assignedUsers'] as List? ?? [];
+
+    String createdByValue = '';
+    final createdByJson = json['createdBy'];
+
+    if (createdByJson is Map<String, dynamic>) {
+      createdByValue =
+          (createdByJson['_id'] ?? createdByJson['id'] ?? '').toString();
+    } else {
+      createdByValue = (json['createdBy'] ?? '').toString();
+    }
 
     return EventModel(
       id: json['_id']?.toString() ?? '',
@@ -51,7 +92,7 @@ class EventModel {
       repeat: json['repeat']?.toString() ?? 'never',
       isActive: json['isActive'] ?? true,
       status: json['status']?.toString() ?? 'upcoming',
-      createdBy: json['createdBy']?.toString() ?? '',
+      createdBy: createdByValue,
       createdByName: json['createdByName']?.toString() ?? '',
       notify24hBefore: json['notify24hBefore'] ?? true,
       notify1hBefore: json['notify1hBefore'] ?? true,
@@ -60,6 +101,9 @@ class EventModel {
       category: categoryJson is Map<String, dynamic>
           ? CategoryModel.fromJson(categoryJson)
           : CategoryModel.empty(),
+      assignedUsers: assignedUsersJson
+          .map((e) => AssignedUserModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -86,48 +130,9 @@ class EventModel {
       'notifyAtTime': notifyAtTime,
       'categoryName': categoryName,
       'category': category.toJson(),
+      'assignedUsers': assignedUsers.map((e) => e.toJson()).toList(),
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
-  }
-
-  EventModel copyWith({
-    String? id,
-    String? title,
-    String? description,
-    String? date,
-    String? time,
-    String? repeat,
-    bool? isActive,
-    String? status,
-    String? createdBy,
-    String? createdByName,
-    bool? notify24hBefore,
-    bool? notify1hBefore,
-    bool? notifyAtTime,
-    CategoryModel? category,
-    String? categoryName,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return EventModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      date: date ?? this.date,
-      time: time ?? this.time,
-      repeat: repeat ?? this.repeat,
-      isActive: isActive ?? this.isActive,
-      status: status ?? this.status,
-      createdBy: createdBy ?? this.createdBy,
-      createdByName: createdByName ?? this.createdByName,
-      notify24hBefore: notify24hBefore ?? this.notify24hBefore,
-      notify1hBefore: notify1hBefore ?? this.notify1hBefore,
-      notifyAtTime: notifyAtTime ?? this.notifyAtTime,
-      category: category ?? this.category,
-      categoryName: categoryName ?? this.categoryName,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
   }
 }

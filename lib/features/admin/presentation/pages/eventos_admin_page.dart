@@ -1,4 +1,7 @@
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
+import 'package:event_app/features/auth/presentation/controller/users_controller.dart';
+import 'package:event_app/features/categories/data/models/category_model.dart';
+import 'package:event_app/features/categories/presentation/providers/categories_provider.dart';
 import 'package:event_app/features/events/data/models/event_model.dart';
 import 'package:event_app/features/events/presentation/providers/events_provider.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +18,21 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
 
+  final List<Map<String, String>> _repeatOptions = const [
+    {'value': 'never', 'label': 'Nunca'},
+    {'value': 'hourly', 'label': 'Cada hora'},
+    {'value': 'daily', 'label': 'Cada día'},
+    {'value': 'weekdays', 'label': 'Entre semana'},
+    {'value': 'weekends', 'label': 'Fines de semana'},
+    {'value': 'weekly', 'label': 'Cada semana'},
+    {'value': 'biweekly', 'label': 'Cada dos semanas'},
+    {'value': 'monthly', 'label': 'Cada mes'},
+    {'value': 'quarterly', 'label': 'Cada 3 meses'},
+    {'value': 'semiannual', 'label': 'Cada 6 meses'},
+    {'value': 'yearly', 'label': 'Cada año'},
+    {'value': 'custom', 'label': 'Personalizado'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -25,8 +43,16 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
 
       if (token.isEmpty) return;
 
+      ref.read(categoriesProvider.notifier).loadCategories(token: token);
+      ref.read(usersControllerProvider.notifier).loadUsers();
       ref.read(eventsProvider.notifier).loadEvents(token: token);
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<EventModel> _applyFilter(List<EventModel> events) {
@@ -45,6 +71,755 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
     }).toList();
   }
 
+  Future<void> _openEventoDialog({
+    EventModel? evento,
+  }) async {
+    final isEdit = evento != null;
+
+    final tituloController =
+        TextEditingController(text: isEdit ? evento.title : '');
+    final descripcionController =
+        TextEditingController(text: isEdit ? evento.description : '');
+    final fechaController =
+        TextEditingController(text: isEdit ? evento.date : '');
+    final horaController =
+        TextEditingController(text: isEdit ? evento.time : '');
+
+    String repetirSeleccionado = isEdit ? evento.repeat : 'never';
+    bool activo = isEdit ? evento.isActive : true;
+    String? categoriaSeleccionadaId = isEdit ? evento.category.id : null;
+
+    final List<String> selectedUserIds =
+        isEdit ? evento.assignedUsers.map((e) => e.user).toList() : <String>[];
+
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    final categoriesState = ref.read(categoriesProvider);
+    final usersState = ref.read(usersControllerProvider);
+
+    final categories = categoriesState.maybeWhen(
+      data: (data) => data
+          .where((e) => e.isActive || e.id == categoriaSeleccionadaId)
+          .toList(),
+      orElse: () => <CategoryModel>[],
+    );
+
+    final normalUsers =
+        usersState.users.where((u) => u.role == 'user' && u.isActive).toList();
+
+    if (categories.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Primero debes crear al menos una categoría'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (normalUsers.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Primero debes crear al menos un usuario normal'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    categoriaSeleccionadaId ??= categories.first.id;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final mediaQuery = MediaQuery.of(context);
+            final bottomInset = mediaQuery.viewInsets.bottom;
+            final maxHeight = mediaQuery.size.height * 0.92;
+
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(30)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        Center(
+                          child: Container(
+                            width: 46,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD7DBE8),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  isEdit ? 'Editar evento' : 'Nuevo evento',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF181A20),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                            child: Form(
+                              key: formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isEdit
+                                        ? 'Modifica la información del evento seleccionado.'
+                                        : 'Completa la información para registrar un nuevo evento.',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF8B90A0),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                  const _InputLabel('Título del evento'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: tituloController,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ingresa el título',
+                                      icon: Icons.event_note_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'El título es obligatorio';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Categoría'),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: categoriaSeleccionadaId,
+                                        isExpanded: true,
+                                        icon: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Color(0xFF2D4ECF),
+                                        ),
+                                        items: categories.map((categoria) {
+                                          return DropdownMenuItem<String>(
+                                            value: categoria.id,
+                                            child: Text(categoria.name),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
+                                          setModalState(() {
+                                            categoriaSeleccionadaId = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Fecha'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: fechaController,
+                                    readOnly: true,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ej: 25/03/2026',
+                                      icon: Icons.calendar_today_outlined,
+                                    ),
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: DateTime.now(),
+                                        firstDate: DateTime(2024),
+                                        lastDate: DateTime(2100),
+                                        locale: const Locale('es', 'ES'),
+                                      );
+
+                                      if (picked != null) {
+                                        final day = picked.day
+                                            .toString()
+                                            .padLeft(2, '0');
+                                        final month = picked.month
+                                            .toString()
+                                            .padLeft(2, '0');
+                                        final year = picked.year.toString();
+                                        fechaController.text =
+                                            '$day/$month/$year';
+                                      }
+                                    },
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La fecha es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Hora'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: horaController,
+                                    readOnly: true,
+                                    decoration: _inputDecoration(
+                                      hint: 'Ej: 22:00',
+                                      icon: Icons.access_time_rounded,
+                                    ),
+                                    onTap: () async {
+                                      final picked = await showTimePicker(
+                                        context: context,
+                                        initialTime: TimeOfDay.now(),
+                                        builder: (context, child) {
+                                          return MediaQuery(
+                                            data:
+                                                MediaQuery.of(context).copyWith(
+                                              alwaysUse24HourFormat: true,
+                                            ),
+                                            child: child!,
+                                          );
+                                        },
+                                      );
+
+                                      if (picked != null) {
+                                        final localizations =
+                                            MaterialLocalizations.of(context);
+                                        horaController.text =
+                                            localizations.formatTimeOfDay(
+                                          picked,
+                                          alwaysUse24HourFormat: true,
+                                        );
+                                      }
+                                    },
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La hora es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Repetir'),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: repetirSeleccionado,
+                                        isExpanded: true,
+                                        borderRadius: BorderRadius.circular(18),
+                                        icon: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Color(0xFF2D4ECF),
+                                        ),
+                                        items: _repeatOptions.map((item) {
+                                          return DropdownMenuItem<String>(
+                                            value: item['value'],
+                                            child: Text(
+                                              item['label']!,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                color: Color(0xFF181A20),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
+                                          setModalState(() {
+                                            repetirSeleccionado = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Descripción'),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: descripcionController,
+                                    maxLines: 4,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    decoration: _inputDecoration(
+                                      hint: 'Describe el evento',
+                                      icon: Icons.description_outlined,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'La descripción es obligatoria';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _InputLabel('Asignar a usuarios'),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: normalUsers.map((user) {
+                                        final isSelected =
+                                            selectedUserIds.contains(user.id);
+
+                                        return CheckboxListTile(
+                                          value: isSelected,
+                                          activeColor: const Color(0xFF2D4ECF),
+                                          contentPadding: EdgeInsets.zero,
+                                          controlAffinity:
+                                              ListTileControlAffinity.leading,
+                                          title: Text(user.name),
+                                          subtitle: Text(user.email),
+                                          onChanged: (value) {
+                                            setModalState(() {
+                                              if (value == true) {
+                                                if (!selectedUserIds
+                                                    .contains(user.id)) {
+                                                  selectedUserIds.add(user.id);
+                                                }
+                                              } else {
+                                                selectedUserIds.remove(user.id);
+                                              }
+                                            });
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F8FC),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFFE8EBF3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Expanded(
+                                          child: Text(
+                                            'Evento activo',
+                                            style: TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF181A20),
+                                            ),
+                                          ),
+                                        ),
+                                        Switch(
+                                          value: activo,
+                                          activeColor: const Color(0xFF2D4ECF),
+                                          onChanged: (value) {
+                                            setModalState(() {
+                                              activo = value;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 56,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFF2D4ECF),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                      ),
+                                      onPressed: isSaving
+                                          ? null
+                                          : () async {
+                                              if (!formKey.currentState!
+                                                  .validate()) {
+                                                return;
+                                              }
+
+                                              if (selectedUserIds.isEmpty) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Debes seleccionar al menos un usuario',
+                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              final authState = ref
+                                                  .read(authControllerProvider);
+                                              final token =
+                                                  authState.token ?? '';
+
+                                              if (token.isEmpty) {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Sesión no válida. Inicia sesión nuevamente',
+                                                      ),
+                                                      behavior: SnackBarBehavior
+                                                          .floating,
+                                                    ),
+                                                  );
+                                                }
+                                                return;
+                                              }
+
+                                              final categoriaSeleccionada =
+                                                  categories.firstWhere(
+                                                (c) =>
+                                                    c.id ==
+                                                    categoriaSeleccionadaId,
+                                              );
+
+                                              try {
+                                                setModalState(() {
+                                                  isSaving = true;
+                                                });
+
+                                                if (isEdit) {
+                                                  await ref
+                                                      .read(eventsProvider
+                                                          .notifier)
+                                                      .updateEvent(
+                                                        token: token,
+                                                        id: evento!.id,
+                                                        title: tituloController
+                                                            .text
+                                                            .trim(),
+                                                        categoryId:
+                                                            categoriaSeleccionadaId!,
+                                                        categoryName:
+                                                            categoriaSeleccionada
+                                                                .name,
+                                                        description:
+                                                            descripcionController
+                                                                .text
+                                                                .trim(),
+                                                        date: fechaController
+                                                            .text
+                                                            .trim(),
+                                                        time: horaController
+                                                            .text
+                                                            .trim(),
+                                                        repeat:
+                                                            repetirSeleccionado,
+                                                        isActive: activo,
+                                                        assignedUsers:
+                                                            selectedUserIds,
+                                                      );
+                                                } else {
+                                                  await ref
+                                                      .read(eventsProvider
+                                                          .notifier)
+                                                      .createEvent(
+                                                        token: token,
+                                                        title: tituloController
+                                                            .text
+                                                            .trim(),
+                                                        categoryId:
+                                                            categoriaSeleccionadaId!,
+                                                        categoryName:
+                                                            categoriaSeleccionada
+                                                                .name,
+                                                        description:
+                                                            descripcionController
+                                                                .text
+                                                                .trim(),
+                                                        date: fechaController
+                                                            .text
+                                                            .trim(),
+                                                        time: horaController
+                                                            .text
+                                                            .trim(),
+                                                        repeat:
+                                                            repetirSeleccionado,
+                                                        isActive: activo,
+                                                        assignedUsers:
+                                                            selectedUserIds,
+                                                      );
+                                                }
+
+                                                if (mounted) {
+                                                  Navigator.pop(context);
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        isEdit
+                                                            ? 'Evento actualizado correctamente'
+                                                            : 'Evento creado correctamente',
+                                                      ),
+                                                      behavior: SnackBarBehavior
+                                                          .floating,
+                                                    ),
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                setModalState(() {
+                                                  isSaving = false;
+                                                });
+
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        e
+                                                            .toString()
+                                                            .replaceFirst(
+                                                              'Exception: ',
+                                                              '',
+                                                            ),
+                                                      ),
+                                                      behavior: SnackBarBehavior
+                                                          .floating,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                      child: Text(
+                                        isSaving
+                                            ? 'Guardando...'
+                                            : isEdit
+                                                ? 'Guardar cambios'
+                                                : 'Crear evento',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleEventoStatus(EventModel evento) async {
+    final nuevoEstado = !evento.isActive;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: Text(
+          nuevoEstado ? 'Activar evento' : 'Inactivar evento',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          nuevoEstado
+              ? '¿Deseas activar el evento "${evento.title}"?'
+              : '¿Deseas inactivar el evento "${evento.title}"?',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2D4ECF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(nuevoEstado ? 'Activar' : 'Inactivar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final authState = ref.read(authControllerProvider);
+      final token = authState.token ?? '';
+
+      if (token.isEmpty) {
+        throw Exception('Sesión no válida. Inicia sesión nuevamente');
+      }
+
+      await ref.read(eventsProvider.notifier).toggleEventStatus(
+            token: token,
+            id: evento.id,
+            isActive: nuevoEstado,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              nuevoEstado
+                  ? 'Evento activado correctamente'
+                  : 'Evento inactivado correctamente',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: Color(0xFFA1A7B8),
+        fontSize: 15,
+      ),
+      prefixIcon: Icon(
+        icon,
+        color: const Color(0xFFA1A7B8),
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF7F8FC),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 18,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(
+          color: Color(0xFFE8EBF3),
+          width: 1.2,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(
+          color: Color(0xFFE8EBF3),
+          width: 1.2,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(
+          color: Color(0xFF2D4ECF),
+          width: 1.4,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventsState = ref.watch(eventsProvider);
@@ -58,6 +833,7 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
               child: _AdminEventosHeader(
                 onBack: () => Navigator.pop(context),
+                onAdd: () => _openEventoDialog(),
               ),
             ),
             Expanded(
@@ -104,6 +880,12 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
                             if (token.isEmpty) return;
 
                             await ref
+                                .read(categoriesProvider.notifier)
+                                .loadCategories(token: token);
+                            await ref
+                                .read(usersControllerProvider.notifier)
+                                .loadUsers();
+                            await ref
                                 .read(eventsProvider.notifier)
                                 .loadEvents(token: token);
                           },
@@ -132,6 +914,12 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
 
                       if (token.isEmpty) return;
 
+                      await ref
+                          .read(categoriesProvider.notifier)
+                          .loadCategories(token: token);
+                      await ref
+                          .read(usersControllerProvider.notifier)
+                          .loadUsers();
                       await ref
                           .read(eventsProvider.notifier)
                           .loadEvents(token: token);
@@ -189,7 +977,12 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
                           ...filteredEvents.map(
                             (evento) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _EventoAdminCard(evento: evento),
+                              child: _EventoAdminCard(
+                                evento: evento,
+                                onEdit: () => _openEventoDialog(evento: evento),
+                                onToggleStatus: () =>
+                                    _toggleEventoStatus(evento),
+                              ),
                             ),
                           ),
                       ],
@@ -201,15 +994,26 @@ class _EventosAdminPageState extends ConsumerState<EventosAdminPage> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        elevation: 0,
+        backgroundColor: const Color(0xFF2D4ECF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        onPressed: () => _openEventoDialog(),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 }
 
 class _AdminEventosHeader extends StatelessWidget {
   final VoidCallback onBack;
+  final VoidCallback onAdd;
 
   const _AdminEventosHeader({
     required this.onBack,
+    required this.onAdd,
   });
 
   @override
@@ -270,15 +1074,25 @@ class _ResumenEventosAdmin extends StatelessWidget {
 
 class _EventoAdminCard extends StatelessWidget {
   final EventModel evento;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleStatus;
 
   const _EventoAdminCard({
     required this.evento,
+    required this.onEdit,
+    required this.onToggleStatus,
   });
 
   @override
   Widget build(BuildContext context) {
     final estadoColor =
         evento.isActive ? const Color(0xFF2D4ECF) : const Color(0xFF9EA4B5);
+
+    final asignadosTexto = evento.assignedUsers.isEmpty
+        ? 'Sin usuarios asignados'
+        : evento.assignedUsers.length == 1
+            ? evento.assignedUsers.first.name
+            : '${evento.assignedUsers.length} usuarios asignados';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -332,6 +1146,26 @@ class _EventoAdminCard extends StatelessWidget {
                   ],
                 ),
               ),
+              PopupMenuButton<String>(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onSelected: (value) {
+                  if (value == 'editar') onEdit();
+                  if (value == 'estado') onToggleStatus();
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'editar',
+                    child: Text('Editar'),
+                  ),
+                  PopupMenuItem(
+                    value: 'estado',
+                    child: Text(evento.isActive ? 'Inactivar' : 'Activar'),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -372,6 +1206,27 @@ class _EventoAdminCard extends StatelessWidget {
                   evento.createdByName.isEmpty
                       ? 'Sin creador'
                       : evento.createdByName,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    color: Color(0xFF4D5875),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.group_outlined,
+                size: 18,
+                color: Color(0xFF2D4ECF),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  asignadosTexto,
                   style: const TextStyle(
                     fontSize: 13.5,
                     color: Color(0xFF4D5875),
@@ -605,8 +1460,7 @@ class _SearchField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText:
-            'Buscar por título, categoría, fecha, hora, ubicación o creador',
+        hintText: 'Buscar por título, categoría, fecha, hora, creador o estado',
         hintStyle: const TextStyle(
           color: Color(0xFFA1A7B8),
           fontSize: 15,
@@ -688,6 +1542,24 @@ class _EmptyEventosState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InputLabel extends StatelessWidget {
+  final String text;
+
+  const _InputLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14.5,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF181A20),
       ),
     );
   }

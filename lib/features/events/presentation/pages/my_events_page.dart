@@ -699,58 +699,52 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                       .read(eventsProvider
                                                           .notifier)
                                                       .updateEvent(
-                                                        token: token,
-                                                        id: evento!.id,
-                                                        title: tituloController
+                                                    token: token,
+                                                    id: evento!.id,
+                                                    title: tituloController.text
+                                                        .trim(),
+                                                    categoryId:
+                                                        categoriaSeleccionadaId!,
+                                                    categoryName:
+                                                        categoriaSeleccionada
+                                                            .name,
+                                                    description:
+                                                        descripcionController
                                                             .text
                                                             .trim(),
-                                                        categoryId:
-                                                            categoriaSeleccionadaId!,
-                                                        categoryName:
-                                                            categoriaSeleccionada
-                                                                .name,
-                                                        description:
-                                                            descripcionController
-                                                                .text
-                                                                .trim(),
-                                                        date: fechaController
-                                                            .text
-                                                            .trim(),
-                                                        time: horaController
-                                                            .text
-                                                            .trim(),
-                                                        repeat:
-                                                            repetirSeleccionado,
-                                                        isActive: activo,
-                                                      );
+                                                    date: fechaController.text
+                                                        .trim(),
+                                                    time: horaController.text
+                                                        .trim(),
+                                                    repeat: repetirSeleccionado,
+                                                    isActive: activo,
+                                                    assignedUsers: const [],
+                                                  );
                                                 } else {
                                                   await ref
                                                       .read(eventsProvider
                                                           .notifier)
                                                       .createEvent(
-                                                        token: token,
-                                                        title: tituloController
+                                                    token: token,
+                                                    title: tituloController.text
+                                                        .trim(),
+                                                    categoryId:
+                                                        categoriaSeleccionadaId!,
+                                                    categoryName:
+                                                        categoriaSeleccionada
+                                                            .name,
+                                                    description:
+                                                        descripcionController
                                                             .text
                                                             .trim(),
-                                                        categoryId:
-                                                            categoriaSeleccionadaId!,
-                                                        categoryName:
-                                                            categoriaSeleccionada
-                                                                .name,
-                                                        description:
-                                                            descripcionController
-                                                                .text
-                                                                .trim(),
-                                                        date: fechaController
-                                                            .text
-                                                            .trim(),
-                                                        time: horaController
-                                                            .text
-                                                            .trim(),
-                                                        repeat:
-                                                            repetirSeleccionado,
-                                                        isActive: activo,
-                                                      );
+                                                    date: fechaController.text
+                                                        .trim(),
+                                                    time: horaController.text
+                                                        .trim(),
+                                                    repeat: repetirSeleccionado,
+                                                    isActive: activo,
+                                                    assignedUsers: const [],
+                                                  );
                                                 }
 
                                                 if (mounted) {

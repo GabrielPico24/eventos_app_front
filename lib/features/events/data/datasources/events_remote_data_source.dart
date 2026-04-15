@@ -26,7 +26,6 @@ class EventsRemoteDataSource {
     }
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en getEvents -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
@@ -52,7 +51,6 @@ class EventsRemoteDataSource {
     }
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en getMyEvents -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
@@ -69,6 +67,7 @@ class EventsRemoteDataSource {
     required String time,
     required String repeat,
     required bool isActive,
+    required List<String> assignedUsers,
     String status = 'upcoming',
     bool notify24hBefore = true,
     bool notify1hBefore = true,
@@ -89,6 +88,7 @@ class EventsRemoteDataSource {
         'time': time,
         'repeat': repeat,
         'isActive': isActive,
+        'assignedUsers': assignedUsers,
         'status': status,
         'notify24hBefore': notify24hBefore,
         'notify1hBefore': notify1hBefore,
@@ -118,6 +118,7 @@ class EventsRemoteDataSource {
     required String time,
     required String repeat,
     required bool isActive,
+    required List<String> assignedUsers,
     String status = 'upcoming',
     bool notify24hBefore = true,
     bool notify1hBefore = true,
@@ -138,6 +139,7 @@ class EventsRemoteDataSource {
         'time': time,
         'repeat': repeat,
         'isActive': isActive,
+        'assignedUsers': assignedUsers,
         'status': status,
         'notify24hBefore': notify24hBefore,
         'notify1hBefore': notify1hBefore,
@@ -174,15 +176,38 @@ class EventsRemoteDataSource {
 
     final body = jsonDecode(response.body);
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return;
-    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
 
     if (response.statusCode == 401) {
-      print('🔒 HTTP 401 en toggleEventStatus -> token expirado');
       throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
     }
 
     throw Exception(body['message'] ?? 'Error al cambiar estado del evento');
+  }
+
+  Future<void> deleteEvent({
+    required String token,
+    required String id,
+  }) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/events/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    Map<String, dynamic> body = {};
+    if (response.body.isNotEmpty) {
+      body = jsonDecode(response.body);
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
+
+    if (response.statusCode == 401) {
+      throw Exception('401|${body['message'] ?? 'Token inválido o expirado'}');
+    }
+
+    throw Exception(body['message'] ?? 'Error al eliminar evento');
   }
 }

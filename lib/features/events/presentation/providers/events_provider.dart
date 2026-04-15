@@ -281,6 +281,7 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String time,
     required String repeat,
     required bool isActive,
+    required List<String> assignedUsers,
     String status = 'upcoming',
     bool notify24hBefore = true,
     bool notify1hBefore = true,
@@ -296,6 +297,7 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       time: time,
       repeat: repeat,
       isActive: isActive,
+      assignedUsers: assignedUsers,
       status: status,
       notify24hBefore: notify24hBefore,
       notify1hBefore: notify1hBefore,
@@ -314,6 +316,7 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
     required String time,
     required String repeat,
     required bool isActive,
+    required List<String> assignedUsers,
     String status = 'upcoming',
     bool notify24hBefore = true,
     bool notify1hBefore = true,
@@ -330,10 +333,21 @@ class EventsNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
       time: time,
       repeat: repeat,
       isActive: isActive,
+      assignedUsers: assignedUsers,
       status: status,
       notify24hBefore: notify24hBefore,
       notify1hBefore: notify1hBefore,
       notifyAtTime: notifyAtTime,
+    );
+  }
+
+  Future<void> deleteEvent({
+    required String token,
+    required String id,
+  }) async {
+    await datasource.deleteEvent(
+      token: token,
+      id: id,
     );
   }
 
