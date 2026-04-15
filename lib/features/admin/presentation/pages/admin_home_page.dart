@@ -1,3 +1,5 @@
+import 'package:event_app/features/admin/presentation/providers/admin_dashboard_provider.dart';
+import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +7,123 @@ import 'package:go_router/go_router.dart';
 class AdminHomePage extends ConsumerWidget {
   const AdminHomePage({super.key});
 
-@override
-Widget build(BuildContext context, WidgetRef ref) {
+  Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF0FF),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFF2D4ECF),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Cerrar sesión',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF181A20),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '¿Quieres cerrar sesión?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF8B90A0),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE8EBF3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Color(0xFF181A20),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D4ECF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await ref
+                              .read(authControllerProvider.notifier)
+                              .logout();
+
+                          if (context.mounted) {
+                            context.go('/login');
+                          }
+                        },
+                        child: const Text(
+                          'Aceptar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider);
     final media = MediaQuery.of(context);
     final size = media.size;
     final width = size.width;
@@ -30,7 +147,11 @@ Widget build(BuildContext context, WidgetRef ref) {
                   horizontalPadding,
                   8,
                 ),
-                child: _AdminHeader(width: width),
+                child: _AdminHeader(
+  width: width,
+  onLogoutTap: () => _showLogoutDialog(context, ref),
+  userName: authState.name ?? 'Administrador',
+),
               ),
             ),
             SliverToBoxAdapter(
@@ -72,7 +193,8 @@ Widget build(BuildContext context, WidgetRef ref) {
                     ),
                     _AdminModuleCard(
                       title: 'Eventos',
-                      subtitle: 'Consulta y supervisa todos los eventos registrados',
+                      subtitle:
+                          'Consulta y supervisa todos los eventos registrados',
                       icon: Icons.event_note_outlined,
                       color: Color(0xFF4D6EF0),
                     ),
@@ -176,8 +298,14 @@ Widget build(BuildContext context, WidgetRef ref) {
 
 class _AdminHeader extends StatelessWidget {
   final double width;
+  final VoidCallback onLogoutTap;
+  final String userName;
 
-  const _AdminHeader({required this.width});
+  const _AdminHeader({
+    required this.width,
+    required this.onLogoutTap,
+    required this.userName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -188,81 +316,62 @@ class _AdminHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF7F8FC),
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: const Color(0xFFE7EAF3),
+          width: 1,
+        ),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: -18,
-            right: -12,
-            child: _DecorBubble(
-              size: isSmall ? 62 : 74,
-              color: const Color(0xFF3557D6),
-              icon: Icons.calendar_month_outlined,
-            ),
-          ),
-          Positioned(
-            top: 38,
-            right: 54,
-            child: _DecorBubble(
-              size: isSmall ? 34 : 40,
-              color: const Color(0xFF4D6EF0),
-              icon: Icons.notifications_none_rounded,
-            ),
-          ),
-          Column(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: isSmall ? 52 : 58,
-                    height: isSmall ? 52 : 58,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+              Container(
+                width: isSmall ? 56 : 62,
+                height: isSmall ? 56 : 62,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2D4ECF).withOpacity(0.06),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_outlined,
-                      color: Color(0xFF2D4ECF),
-                      size: 28,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.logout_rounded,
-                        color: Color(0xFF2D4ECF), 
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Panel Administrador',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF181A20),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  color: Color(0xFF2D4ECF),
+                  size: 30,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Administra usuarios, eventos, categorías, notificaciones y reportes desde un solo lugar.',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  height: 1.45,
-                  color: Color(0xFF8B90A0),
-                  fontWeight: FontWeight.w400,
-                ),
+              const Spacer(),
+              _HeaderActionButton(
+                icon: Icons.logout_rounded,
+                onTap: onLogoutTap,
               ),
             ],
+          ),
+          const SizedBox(height: 22),
+          Text(
+            'Panel $userName',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF181A20),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Administra usuarios, eventos, categorías, notificaciones y reportes desde un solo lugar.',
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.45,
+              color: Color(0xFF8B90A0),
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
@@ -270,71 +379,154 @@ class _AdminHeader extends StatelessWidget {
   }
 }
 
-class _OverviewSection extends StatelessWidget {
-  const _OverviewSection();
+class _HeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderActionButton({
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 700;
-
-        if (isWide) {
-          return Row(
-            children: const [
-              Expanded(
-                child: _OverviewCard(
-                  title: 'Usuarios',
-                  value: '128',
-                  subtitle: 'Registrados',
-                  icon: Icons.people_outline_rounded,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _OverviewCard(
-                  title: 'Eventos',
-                  value: '46',
-                  subtitle: 'Activos este mes',
-                  icon: Icons.event_available_outlined,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _OverviewCard(
-                  title: 'Avisos',
-                  value: '12',
-                  subtitle: 'Pendientes de enviar',
-                  icon: Icons.campaign_outlined,
-                ),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE7EAF3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2D4ECF).withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
-          );
-        }
+          ),
+          child: Icon(
+            icon,
+            color: const Color(0xFF2D4ECF),
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-        return Column(
-          children: const [
-            _OverviewCard(
-              title: 'Usuarios',
-              value: '128',
-              subtitle: 'Registrados',
-              icon: Icons.people_outline_rounded,
-            ),
-            SizedBox(height: 12),
-            _OverviewCard(
-              title: 'Eventos',
-              value: '46',
-              subtitle: 'Activos este mes',
-              icon: Icons.event_available_outlined,
-            ),
-            SizedBox(height: 12),
-            _OverviewCard(
-              title: 'Avisos',
-              value: '12',
-              subtitle: 'Pendientes de enviar',
-              icon: Icons.campaign_outlined,
-            ),
-          ],
+class _OverviewSection extends ConsumerWidget {
+  const _OverviewSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(adminDashboardStatsProvider);
+
+    return statsAsync.when(
+      loading: () => const Column(
+        children: [
+          _OverviewCard(
+            title: 'Usuarios',
+            value: '...',
+            subtitle: 'Cargando',
+            icon: Icons.people_outline_rounded,
+          ),
+          SizedBox(height: 12),
+          _OverviewCard(
+            title: 'Eventos',
+            value: '...',
+            subtitle: 'Cargando',
+            icon: Icons.event_available_outlined,
+          ),
+          SizedBox(height: 12),
+          _OverviewCard(
+            title: 'Avisos',
+            value: '...',
+            subtitle: 'Cargando',
+            icon: Icons.campaign_outlined,
+          ),
+        ],
+      ),
+      error: (error, stack) => Column(
+        children: [
+          _OverviewCard(
+            title: 'Usuarios',
+            value: '0',
+            subtitle: 'Error al cargar',
+            icon: Icons.people_outline_rounded,
+          ),
+          const SizedBox(height: 12),
+          _OverviewCard(
+            title: 'Eventos',
+            value: '0',
+            subtitle: 'Error al cargar',
+            icon: Icons.event_available_outlined,
+          ),
+          const SizedBox(height: 12),
+          _OverviewCard(
+            title: 'Avisos',
+            value: '0',
+            subtitle: 'Error al cargar',
+            icon: Icons.campaign_outlined,
+          ),
+        ],
+      ),
+      data: (stats) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 700;
+
+            final cards = [
+              _OverviewCard(
+                title: 'Usuarios',
+                value: stats.totalUsers.toString(),
+                subtitle: 'Registrados',
+                icon: Icons.people_outline_rounded,
+              ),
+              _OverviewCard(
+                title: 'Eventos',
+                value: stats.totalEvents.toString(),
+                subtitle: 'Activos este mes',
+                icon: Icons.event_available_outlined,
+              ),
+              _OverviewCard(
+                title: 'Avisos',
+                value: stats.pendingNotifications.toString(),
+                subtitle: 'Pendientes de enviar',
+                icon: Icons.campaign_outlined,
+              ),
+            ];
+
+            if (isWide) {
+              return Row(
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[1]),
+                  const SizedBox(width: 12),
+                  Expanded(child: cards[2]),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                cards[0],
+                const SizedBox(height: 12),
+                cards[1],
+                const SizedBox(height: 12),
+                cards[2],
+              ],
+            );
+          },
         );
       },
     );
@@ -439,34 +631,34 @@ class _AdminModuleCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-onTap: () {
-  if (title == 'Usuarios') {
-    context.push('/usuarios');
-    return;
-  }
+        onTap: () {
+          if (title == 'Usuarios') {
+            context.push('/usuarios');
+            return;
+          }
 
-  if (title == 'Eventos') {
-    context.push('/eventos');
-    return;
-  }
+          if (title == 'Eventos') {
+            context.push('/eventos');
+            return;
+          }
 
-  if (title == 'Categorías') {
-    context.push('/categorias');
-    return;
-  }
+          if (title == 'Categorías') {
+            context.push('/categorias');
+            return;
+          }
 
-  if (title == 'Notificaciones') {
-    context.push('/notificaciones');
-    return;
-  }
+          if (title == 'Notificaciones') {
+            context.push('/notificaciones');
+            return;
+          }
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Abrir módulo: $title'),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
-},
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Abrir módulo: $title'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
         child: Ink(
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8FC),

@@ -70,8 +70,8 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-  return StatefulBuilder(
-    builder: (modalContext, setModalState) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
             final bottomInset = MediaQuery.of(modalContext).viewInsets.bottom;
             final usersState = ref.watch(usersControllerProvider);
 
@@ -271,75 +271,97 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
-                              onPressed: (usersState.isCreating || usersState.isUpdating)
-    ? null
-    : () async {
-        if (!formKey.currentState!.validate()) {
-          return;
-        }
+                              onPressed: (usersState.isCreating ||
+                                      usersState.isUpdating)
+                                  ? null
+                                  : () async {
+                                      if (!formKey.currentState!.validate()) {
+                                        return;
+                                      }
 
-        final messenger = ScaffoldMessenger.of(this.context);
-        final navigator = Navigator.of(modalContext);
+                                      final messenger =
+                                          ScaffoldMessenger.of(this.context);
+                                      final navigator =
+                                          Navigator.of(modalContext);
 
-        try {
-          if (isEdit) {
-            await ref.read(usersControllerProvider.notifier).updateUser(
-                  id: usuario.id,
-                  name: nombreController.text.trim(),
-                  email: correoController.text.trim(),
-                  password: passwordController.text.trim(),
-                  role: rolSeleccionado == 'Administrador'
-                      ? 'admin'
-                      : 'user',
-                  isActive: activo,
-                );
+                                      try {
+                                        if (isEdit) {
+                                          await ref
+                                              .read(usersControllerProvider
+                                                  .notifier)
+                                              .updateUser(
+                                                id: usuario.id,
+                                                name: nombreController.text
+                                                    .trim(),
+                                                email: correoController.text
+                                                    .trim(),
+                                                password: passwordController
+                                                    .text
+                                                    .trim(),
+                                                role: rolSeleccionado ==
+                                                        'Administrador'
+                                                    ? 'admin'
+                                                    : 'user',
+                                                isActive: activo,
+                                              );
 
-            if (!mounted) return;
+                                          if (!mounted) return;
 
-            navigator.pop();
+                                          navigator.pop();
 
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text('Usuario editado correctamente'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            return;
-          }
+                                          messenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Usuario editado correctamente'),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-          await ref.read(usersControllerProvider.notifier).createUser(
-                name: nombreController.text.trim(),
-                email: correoController.text.trim(),
-                password: passwordController.text.trim(),
-                role: rolSeleccionado == 'Administrador'
-                    ? 'admin'
-                    : 'user',
-                isActive: activo,
-              );
+                                        await ref
+                                            .read(usersControllerProvider
+                                                .notifier)
+                                            .createUser(
+                                              name:
+                                                  nombreController.text.trim(),
+                                              email:
+                                                  correoController.text.trim(),
+                                              password: passwordController.text
+                                                  .trim(),
+                                              role: rolSeleccionado ==
+                                                      'Administrador'
+                                                  ? 'admin'
+                                                  : 'user',
+                                              isActive: activo,
+                                            );
 
-          if (!mounted) return;
+                                        if (!mounted) return;
 
-          navigator.pop();
+                                        navigator.pop();
 
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Usuario creado correctamente'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } catch (e) {
-          if (!mounted) return;
+                                        messenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Usuario creado correctamente'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      } catch (e) {
+                                        if (!mounted) return;
 
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                e.toString().replaceFirst('Exception: ', ''),
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
+                                        messenger.showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              e.toString().replaceFirst(
+                                                  'Exception: ', ''),
+                                            ),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    },
                               child: (usersState.isCreating ||
                                       usersState.isUpdating)
                                   ? const SizedBox(
@@ -375,142 +397,142 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
   }
 
   void _deleteUsuario(UsuarioModel usuario) {
-  showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (_) {
-      return AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(18),
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Color(0xFFE53935),
+                  size: 32,
+                ),
               ),
-              child: const Icon(
-                Icons.delete_outline_rounded,
-                color: Color(0xFFE53935),
-                size: 32,
+              const SizedBox(height: 18),
+              const Text(
+                'Eliminar usuario',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF181A20),
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Eliminar usuario',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF181A20),
+              const SizedBox(height: 10),
+              Text(
+                '¿Deseas eliminar a ${usuario.nombre}?\nEsta acción no se puede deshacer.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF8B90A0),
+                  height: 1.45,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '¿Deseas eliminar a ${usuario.nombre}?\nEsta acción no se puede deshacer.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF8B90A0),
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE8EBF3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE8EBF3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: Color(0xFF181A20),
-                          fontWeight: FontWeight.w700,
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Color(0xFF181A20),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE53935),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE53935),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(this.context);
+                          final navigator = Navigator.of(context);
+
+                          try {
+                            navigator.pop();
+
+                            await ref
+                                .read(usersControllerProvider.notifier)
+                                .deleteUser(id: usuario.id);
+
+                            if (!mounted) return;
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${usuario.nombre} eliminado correctamente',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          'Eliminar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      onPressed: () async {
-  final messenger = ScaffoldMessenger.of(this.context);
-  final navigator = Navigator.of(context);
-
-  try {
-    navigator.pop();
-
-    await ref
-        .read(usersControllerProvider.notifier)
-        .deleteUser(id: usuario.id);
-
-    if (!mounted) return;
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${usuario.nombre} eliminado correctamente',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
-  } catch (e) {
-    if (!mounted) return;
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          e.toString().replaceFirst('Exception: ', ''),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-      );
   }
-},
-                      child: const Text(
-                        'Eliminar',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
 
   @override
   Widget build(BuildContext context) {
@@ -573,8 +595,9 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                     _ResumenUsuarios(
                       total: usuarios.length,
                       activos: usuarios.where((e) => e.activo).length,
-                      administradores:
-                          usuarios.where((e) => e.rol == 'Administrador').length,
+                      administradores: usuarios
+                          .where((e) => e.rol == 'Administrador')
+                          .length,
                       isTablet: isTablet,
                     ),
                     const SizedBox(height: 24),
@@ -603,8 +626,7 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF7F8FC),
                           borderRadius: BorderRadius.circular(24),
-                          border:
-                              Border.all(color: const Color(0xFFE8EBF3)),
+                          border: Border.all(color: const Color(0xFFE8EBF3)),
                         ),
                         child: Column(
                           children: [
