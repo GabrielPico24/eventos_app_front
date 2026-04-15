@@ -1,86 +1,76 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
+import 'package:event_app/features/auth/presentation/controller/users_controller.dart';
+import 'package:event_app/features/categories/presentation/providers/categories_provider.dart';
+import 'package:event_app/features/notifications/presentation/providers/notifications_provider.dart';
 
-class NotificacionesPage extends StatefulWidget {
+class NotificacionesPage extends ConsumerStatefulWidget {
   const NotificacionesPage({super.key});
 
   @override
-  State<NotificacionesPage> createState() => _NotificacionesPageState();
+  ConsumerState<NotificacionesPage> createState() => _NotificacionesPageState();
 }
 
-class _NotificacionesPageState extends State<NotificacionesPage> {
+class _NotificacionesPageState extends ConsumerState<NotificacionesPage> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _mensajeController = TextEditingController();
 
-  final List<UsuarioNotificacionModel> _usuarios = [
-    UsuarioNotificacionModel(
-      id: '1',
-      nombre: 'María López',
-      correo: 'maria@eventos.com',
-      rol: 'Usuario',
-      activo: true,
-    ),
-    UsuarioNotificacionModel(
-      id: '2',
-      nombre: 'Carlos Ruiz',
-      correo: 'carlos@eventos.com',
-      rol: 'Usuario',
-      activo: true,
-    ),
-    UsuarioNotificacionModel(
-      id: '3',
-      nombre: 'Ana Torres',
-      correo: 'ana@eventos.com',
-      rol: 'Usuario',
-      activo: false,
-    ),
-    UsuarioNotificacionModel(
-      id: '4',
-      nombre: 'Luis Mena',
-      correo: 'luis@eventos.com',
-      rol: 'Usuario',
-      activo: true,
-    ),
-  ];
-
-  final List<HistorialNotificacionModel> _historial = [
-    HistorialNotificacionModel(
-      titulo: 'Recordatorio de cita médica',
-      mensaje: 'Se recuerda asistir 15 minutos antes del evento.',
-      categoria: 'Cita médica',
-      destinatarios: 'Todos',
-      fecha: '23/03/2026',
-    ),
-    HistorialNotificacionModel(
-      titulo: 'Cambio de horario',
-      mensaje: 'La sesión de psicología fue reagendada para las 10:30 AM.',
-      categoria: 'Psicólogo',
-      destinatarios: '2 usuarios',
-      fecha: '22/03/2026',
-    ),
-  ];
-
   String _searchText = '';
-  String _categoriaSeleccionada = 'General';
+  String _categoriaSeleccionada = '';
   bool _enviarATodos = true;
-
   List<String> _usuariosSeleccionados = [];
 
-  final List<String> _categorias = const [
-    'General',
-    'Psicólogo',
-    'Inyección',
-    'Cita médica',
-    'Odontología',
-    'Laboratorio',
-    'Control general',
-    'Vacunación',
-    'Terapia',
-  ];
+  @override
+  void initState() {
+    super.initState();
 
-  List<UsuarioNotificacionModel> get _filteredUsuarios {
-    final usuariosNormales =
-        _usuarios.where((u) => u.rol == 'Usuario').toList();
+    Future.microtask(() async {
+      final authState = ref.read(authControllerProvider);
+      final token = authState.token ?? '';
+
+      await ref.read(usersControllerProvider.notifier).loadUsers();
+
+      if (token.isNotEmpty) {
+        await ref
+            .read(categoriesProvider.notifier)
+            .loadCategories(token: token);
+      }
+
+      await ref.read(notificationsProvider.notifier).loadNotifications();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _tituloController.dispose();
+    _mensajeController.dispose();
+    super.dispose();
+  }
+
+  List<UsuarioNotificacionModel> _buildUsuariosDesdeBd() {
+    final usersState = ref.read(usersControllerProvider);
+
+    return usersState.users
+        .where((u) => u.role == 'user')
+        .map(
+          (u) => UsuarioNotificacionModel(
+            id: u.id,
+            nombre: u.name,
+            correo: u.email,
+            rol: 'Usuario',
+            activo: u.isActive,
+          ),
+        )
+        .toList();
+  }
+
+  List<UsuarioNotificacionModel> _filteredUsuarios(
+    List<UsuarioNotificacionModel> usuarios,
+  ) {
+    final usuariosNormales = usuarios.where((u) => u.rol == 'Usuario').toList();
 
     if (_searchText.trim().isEmpty) return usuariosNormales;
 
@@ -91,8 +81,9 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
     }).toList();
   }
 
-  int get _usuariosActivos =>
-      _usuarios.where((u) => u.rol == 'Usuario' && u.activo).length;
+  int _usuariosActivos(List<UsuarioNotificacionModel> usuarios) {
+    return usuarios.where((u) => u.rol == 'Usuario' && u.activo).length;
+  }
 
   int get _cantidadSeleccionados => _usuariosSeleccionados.length;
 
@@ -106,18 +97,19 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
     });
   }
 
-  void _toggleSeleccionarTodosVisibles() {
-    final visiblesActivos = _filteredUsuarios
-        .where((u) => u.activo)
-        .map((u) => u.id)
-        .toList();
+  void _toggleSeleccionarTodosVisibles(
+    List<UsuarioNotificacionModel> filteredUsuarios,
+  ) {
+    final visiblesActivos =
+        filteredUsuarios.where((u) => u.activo).map((u) => u.id).toList();
 
     final todosSeleccionados =
         visiblesActivos.every((id) => _usuariosSeleccionados.contains(id));
 
     setState(() {
       if (todosSeleccionados) {
-        _usuariosSeleccionados.removeWhere((id) => visiblesActivos.contains(id));
+        _usuariosSeleccionados
+            .removeWhere((id) => visiblesActivos.contains(id));
       } else {
         for (final id in visiblesActivos) {
           if (!_usuariosSeleccionados.contains(id)) {
@@ -128,7 +120,7 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
     });
   }
 
-  void _enviarNotificacion() {
+  Future<void> _enviarNotificacion() async {
     final titulo = _tituloController.text.trim();
     final mensaje = _mensajeController.text.trim();
 
@@ -136,6 +128,16 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Debes completar el título y el mensaje'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_categoriaSeleccionada.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes seleccionar una categoría'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -152,45 +154,76 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
       return;
     }
 
-    setState(() {
-      _historial.insert(
-        0,
-        HistorialNotificacionModel(
-          titulo: titulo,
-          mensaje: mensaje,
-          categoria: _categoriaSeleccionada,
-          destinatarios: _enviarATodos
-              ? 'Todos'
-              : '${_usuariosSeleccionados.length} usuario(s)',
-          fecha: '23/03/2026',
+    try {
+      await ref.read(notificationsProvider.notifier).sendNotification(
+            title: titulo,
+            message: mensaje,
+            category: _categoriaSeleccionada,
+            sendToAll: _enviarATodos,
+            userIds: _usuariosSeleccionados,
+          );
+
+      setState(() {
+        _tituloController.clear();
+        _mensajeController.clear();
+        _usuariosSeleccionados.clear();
+        _enviarATodos = true;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notificación enviada correctamente'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
 
-      _tituloController.clear();
-      _mensajeController.clear();
-      _categoriaSeleccionada = 'General';
-      _enviarATodos = true;
-      _usuariosSeleccionados.clear();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notificación enviada correctamente'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _tituloController.dispose();
-    _mensajeController.dispose();
-    super.dispose();
+  String _formatFecha(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day/$month/$year';
   }
 
   @override
   Widget build(BuildContext context) {
+    final usersState = ref.watch(usersControllerProvider);
+    final notificationsState = ref.watch(notificationsProvider);
+    final categoriesState = ref.watch(categoriesProvider);
+
+    final usuarios = _buildUsuariosDesdeBd();
+    final filteredUsuarios = _filteredUsuarios(usuarios);
+    final historial = notificationsState.notifications;
+
+    final categoriasBd = categoriesState.maybeWhen(
+      data: (data) => data.where((c) => c.isActive).map((c) => c.name).toList(),
+      orElse: () => <String>[],
+    );
+
+    if (_categoriaSeleccionada.isEmpty && categoriasBd.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _categoriaSeleccionada = categoriasBd.first;
+          });
+        }
+      });
+    }
+
     final width = MediaQuery.of(context).size.width;
     final isTablet = width >= 700;
     final padding = width * 0.06;
@@ -209,133 +242,181 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(padding, 0, padding, 24),
-                children: [
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Notificaciones',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF181A20),
+              child: RefreshIndicator(
+                color: const Color(0xFF2D4ECF),
+                onRefresh: () async {
+                  final authState = ref.read(authControllerProvider);
+                  final token = authState.token ?? '';
+
+                  await ref.read(usersControllerProvider.notifier).loadUsers();
+
+                  if (token.isNotEmpty) {
+                    await ref
+                        .read(categoriesProvider.notifier)
+                        .loadCategories(token: token);
+                  }
+
+                  await ref
+                      .read(notificationsProvider.notifier)
+                      .loadNotifications();
+                },
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(padding, 0, padding, 24),
+                  children: [
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Notificaciones',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF181A20),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Envía avisos a los usuarios registrados y revisa el historial de envíos.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF8B90A0),
-                      height: 1.45,
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Envía avisos a los usuarios registrados y revisa el historial de envíos.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF8B90A0),
+                        height: 1.45,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _ResumenNotificaciones(
-                    totalUsuarios: _usuarios.where((u) => u.rol == 'Usuario').length,
-                    activos: _usuariosActivos,
-                    historial: _historial.length,
-                    isTablet: isTablet,
-                  ),
-                  const SizedBox(height: 24),
-                  _ComposerCard(
-                    tituloController: _tituloController,
-                    mensajeController: _mensajeController,
-                    categoriaSeleccionada: _categoriaSeleccionada,
-                    categorias: _categorias,
-                    enviarATodos: _enviarATodos,
-                    cantidadSeleccionados: _cantidadSeleccionados,
-                    onCategoriaChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _categoriaSeleccionada = value;
-                      });
-                    },
-                    onToggleEnviarATodos: (value) {
-                      setState(() {
-                        _enviarATodos = value;
-                        if (value) {
-                          _usuariosSeleccionados.clear();
-                        }
-                      });
-                    },
-                    onSend: _enviarNotificacion,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Destinatarios',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF181A20),
+                    const SizedBox(height: 20),
+                    _ResumenNotificaciones(
+                      totalUsuarios:
+                          usuarios.where((u) => u.rol == 'Usuario').length,
+                      activos: _usuariosActivos(usuarios),
+                      historial: historial.length,
+                      isTablet: isTablet,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SearchField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchText = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  if (!_enviarATodos)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: _toggleSeleccionarTodosVisibles,
-                        icon: const Icon(
-                          Icons.done_all_rounded,
-                          color: Color(0xFF2D4ECF),
-                        ),
-                        label: const Text(
-                          'Seleccionar visibles',
-                          style: TextStyle(
+                    const SizedBox(height: 24),
+                    _ComposerCard(
+                      tituloController: _tituloController,
+                      mensajeController: _mensajeController,
+                      categoriaSeleccionada: _categoriaSeleccionada,
+                      categorias: categoriasBd,
+                      enviarATodos: _enviarATodos,
+                      cantidadSeleccionados: _cantidadSeleccionados,
+                      isSending: notificationsState.isSending,
+                      onCategoriaChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _categoriaSeleccionada = value;
+                        });
+                      },
+                      onToggleEnviarATodos: (value) {
+                        setState(() {
+                          _enviarATodos = value;
+                          if (value) {
+                            _usuariosSeleccionados.clear();
+                          }
+                        });
+                      },
+                      onSend: _enviarNotificacion,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Destinatarios',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF181A20),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _SearchField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchText = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    if (!_enviarATodos)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () =>
+                              _toggleSeleccionarTodosVisibles(filteredUsuarios),
+                          icon: const Icon(
+                            Icons.done_all_rounded,
                             color: Color(0xFF2D4ECF),
-                            fontWeight: FontWeight.w700,
+                          ),
+                          label: const Text(
+                            'Seleccionar visibles',
+                            style: TextStyle(
+                              color: Color(0xFF2D4ECF),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (_filteredUsuarios.isEmpty)
-                    const _EmptyUsuariosNotificacionState()
-                  else
-                    ..._filteredUsuarios.map(
-                      (usuario) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _UsuarioSelectableCard(
-                          usuario: usuario,
-                          seleccionado:
-                              _usuariosSeleccionados.contains(usuario.id),
-                          bloqueado: _enviarATodos || !usuario.activo,
-                          onTap: () {
-                            if (_enviarATodos || !usuario.activo) return;
-                            _toggleUsuario(usuario.id);
-                          },
+                    if (usersState.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 20, bottom: 20),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2D4ECF),
+                          ),
+                        ),
+                      )
+                    else if (filteredUsuarios.isEmpty)
+                      const _EmptyUsuariosNotificacionState()
+                    else
+                      ...filteredUsuarios.map(
+                        (usuario) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _UsuarioSelectableCard(
+                            usuario: usuario,
+                            seleccionado:
+                                _usuariosSeleccionados.contains(usuario.id),
+                            bloqueado: _enviarATodos || !usuario.activo,
+                            onTap: () {
+                              if (_enviarATodos || !usuario.activo) return;
+                              _toggleUsuario(usuario.id);
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Historial de notificaciones',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF181A20),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_historial.isEmpty)
-                    const _EmptyHistorialState()
-                  else
-                    ..._historial.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _HistorialCard(item: item),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Historial de notificaciones',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF181A20),
                       ),
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    if (notificationsState.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 20, bottom: 20),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2D4ECF),
+                          ),
+                        ),
+                      )
+                    else if (historial.isEmpty)
+                      const _EmptyHistorialState()
+                    else
+                      ...historial.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _HistorialCard(
+                            item: HistorialNotificacionModel(
+                              titulo: item.title,
+                              mensaje: item.message,
+                              categoria: item.category,
+                              destinatarios: 'Usuario específico',
+                              fecha: _formatFecha(item.createdAt),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -349,8 +430,18 @@ class _NotificacionesPageState extends State<NotificacionesPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              onPressed: _enviarNotificacion,
-              child: const Icon(Icons.send_rounded, color: Colors.white),
+              onPressed:
+                  notificationsState.isSending ? null : _enviarNotificacion,
+              child: notificationsState.isSending
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, color: Colors.white),
             ),
     );
   }
@@ -597,6 +688,7 @@ class _ComposerCard extends StatelessWidget {
   final List<String> categorias;
   final bool enviarATodos;
   final int cantidadSeleccionados;
+  final bool isSending;
   final ValueChanged<String?> onCategoriaChanged;
   final ValueChanged<bool> onToggleEnviarATodos;
   final VoidCallback onSend;
@@ -608,6 +700,7 @@ class _ComposerCard extends StatelessWidget {
     required this.categorias,
     required this.enviarATodos,
     required this.cantidadSeleccionados,
+    required this.isSending,
     required this.onCategoriaChanged,
     required this.onToggleEnviarATodos,
     required this.onSend,
@@ -615,6 +708,8 @@ class _ComposerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasCategorias = categorias.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -655,33 +750,56 @@ class _ComposerCard extends StatelessWidget {
           const SizedBox(height: 16),
           const _InputLabel('Categoría'),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE8EBF3)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: categoriaSeleccionada,
-                isExpanded: true,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF2D4ECF),
+          if (!hasCategorias)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE8EBF3)),
+              ),
+              child: const Text(
+                'No existen categorías registradas',
+                style: TextStyle(
+                  color: Color(0xFF8B90A0),
+                  fontSize: 15,
                 ),
-                items: categorias
-                    .map(
-                      (categoria) => DropdownMenuItem(
-                        value: categoria,
-                        child: Text(categoria),
-                      ),
-                    )
-                    .toList(),
-                onChanged: onCategoriaChanged,
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE8EBF3)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: categoriaSeleccionada.isEmpty
+                      ? categorias.first
+                      : categoriaSeleccionada,
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF2D4ECF),
+                  ),
+                  items: categorias
+                      .map(
+                        (categoria) => DropdownMenuItem(
+                          value: categoria,
+                          child: Text(categoria),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: onCategoriaChanged,
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 16),
           const _InputLabel('Mensaje'),
           const SizedBox(height: 8),
@@ -736,11 +854,20 @@ class _ComposerCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              onPressed: onSend,
-              icon: const Icon(Icons.send_rounded),
-              label: const Text(
-                'Enviar notificación',
-                style: TextStyle(
+              onPressed: isSending || !hasCategorias ? null : onSend,
+              icon: isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded),
+              label: Text(
+                isSending ? 'Enviando...' : 'Enviar notificación',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
