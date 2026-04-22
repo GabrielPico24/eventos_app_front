@@ -409,7 +409,9 @@ class _NotificacionesPageState extends ConsumerState<NotificacionesPage> {
                               titulo: item.title,
                               mensaje: item.message,
                               categoria: item.category,
-                              destinatarios: 'Usuario específico',
+                              destinatarios: item.targetUserName.isNotEmpty
+                                  ? item.targetUserName
+                                  : 'Todos los usuarios',
                               fecha: _formatFecha(item.createdAt),
                             ),
                           ),
@@ -422,27 +424,6 @@ class _NotificacionesPageState extends ConsumerState<NotificacionesPage> {
           ],
         ),
       ),
-      floatingActionButton: isTablet
-          ? null
-          : FloatingActionButton(
-              elevation: 0,
-              backgroundColor: const Color(0xFF2D4ECF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              onPressed:
-                  notificationsState.isSending ? null : _enviarNotificacion,
-              child: notificationsState.isSending
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.send_rounded, color: Colors.white),
-            ),
     );
   }
 }
@@ -466,17 +447,6 @@ class _NotificacionesHeader extends StatelessWidget {
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: onBack,
         ),
-        const Spacer(),
-        isTablet
-            ? _PrimaryHeaderButton(
-                icon: Icons.send_rounded,
-                label: 'Enviar notificación',
-                onTap: onSend,
-              )
-            : _HeaderButton(
-                icon: Icons.send_rounded,
-                onTap: onSend,
-              ),
       ],
     );
   }

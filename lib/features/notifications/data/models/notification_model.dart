@@ -8,6 +8,9 @@ class NotificationModel {
   final DateTime createdAt;
   final String userId;
   final String createdByName;
+  final String sendStatus;
+  final String targetUserName;
+  final String targetUserEmail;
 
   NotificationModel({
     required this.id,
@@ -19,9 +22,16 @@ class NotificationModel {
     required this.createdAt,
     required this.userId,
     required this.createdByName,
+    required this.sendStatus,
+    required this.targetUserName,
+    required this.targetUserEmail,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final metadata = (json['metadata'] is Map)
+        ? Map<String, dynamic>.from(json['metadata'])
+        : <String, dynamic>{};
+
     return NotificationModel(
       id: json['_id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -34,6 +44,9 @@ class NotificationModel {
           : DateTime.now(),
       userId: json['userId']?.toString() ?? '',
       createdByName: json['createdByName']?.toString() ?? '',
+      sendStatus: json['sendStatus']?.toString() ?? 'pending',
+      targetUserName: metadata['targetUserName']?.toString() ?? '',
+      targetUserEmail: metadata['targetUserEmail']?.toString() ?? '',
     );
   }
 }

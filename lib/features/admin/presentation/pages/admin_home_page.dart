@@ -1,4 +1,5 @@
-import 'package:event_app/features/admin/presentation/providers/admin_dashboard_provider.dart';
+import 'package:event_app/features/admin/presentation/providers/admin_dashboard_controller.dart';
+import 'package:event_app/features/admin/data/models/admin_dashboard_stats.dart';
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -210,7 +211,7 @@ class AdminHomePage extends ConsumerWidget {
                       icon: Icons.notifications_none_rounded,
                       color: Color(0xFF2D4ECF),
                     ),
-                    _AdminModuleCard(
+                    /* _AdminModuleCard(
                       title: 'Calendario',
                       subtitle: 'Visualiza agenda diaria y mensual',
                       icon: Icons.calendar_month_outlined,
@@ -233,7 +234,7 @@ class AdminHomePage extends ConsumerWidget {
                       subtitle: 'Parámetros generales de la app',
                       icon: Icons.settings_outlined,
                       color: Color(0xFF4D6EF0),
-                    ),
+                    ), */
                   ],
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -244,7 +245,7 @@ class AdminHomePage extends ConsumerWidget {
                 ),
               ),
             ),
-            SliverToBoxAdapter(
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -257,14 +258,14 @@ class AdminHomePage extends ConsumerWidget {
                   subtitle: 'Lo más usado por el administrador',
                 ),
               ),
-            ),
-            SliverToBoxAdapter(
+            ), */
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: const _QuickActionsRow(),
               ),
-            ),
-            SliverToBoxAdapter(
+            ), */
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -277,8 +278,8 @@ class AdminHomePage extends ConsumerWidget {
                   subtitle: 'Últimos movimientos del sistema',
                 ),
               ),
-            ),
-            SliverToBoxAdapter(
+            ), */
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -288,7 +289,7 @@ class AdminHomePage extends ConsumerWidget {
                 ),
                 child: const _RecentActivityCard(),
               ),
-            ),
+            ), */
           ],
         ),
       ),
@@ -428,10 +429,10 @@ class _OverviewSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(adminDashboardStatsProvider);
+    final dashboardState = ref.watch(adminDashboardControllerProvider);
 
-    return statsAsync.when(
-      loading: () => const Column(
+    if (dashboardState.isLoading && dashboardState.stats == null) {
+      return const Column(
         children: [
           _OverviewCard(
             title: 'Usuarios',
@@ -454,8 +455,11 @@ class _OverviewSection extends ConsumerWidget {
             icon: Icons.campaign_outlined,
           ),
         ],
-      ),
-      error: (error, stack) => Column(
+      );
+    }
+
+    if (dashboardState.errorMessage != null && dashboardState.stats == null) {
+      return Column(
         children: [
           _OverviewCard(
             title: 'Usuarios',
@@ -478,55 +482,61 @@ class _OverviewSection extends ConsumerWidget {
             icon: Icons.campaign_outlined,
           ),
         ],
-      ),
-      data: (stats) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 700;
+      );
+    }
 
-            final cards = [
-              _OverviewCard(
-                title: 'Usuarios',
-                value: stats.totalUsers.toString(),
-                subtitle: 'Registrados',
-                icon: Icons.people_outline_rounded,
-              ),
-              _OverviewCard(
-                title: 'Eventos',
-                value: stats.totalEvents.toString(),
-                subtitle: 'Activos este mes',
-                icon: Icons.event_available_outlined,
-              ),
-              _OverviewCard(
-                title: 'Avisos',
-                value: stats.pendingNotifications.toString(),
-                subtitle: 'Pendientes de enviar',
-                icon: Icons.campaign_outlined,
-              ),
-            ];
+    final stats = dashboardState.stats ??
+        const AdminDashboardStats(
+          totalUsers: 0,
+          totalEvents: 0,
+          pendingNotifications: 0,
+        );
 
-            if (isWide) {
-              return Row(
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 12),
-                  Expanded(child: cards[1]),
-                  const SizedBox(width: 12),
-                  Expanded(child: cards[2]),
-                ],
-              );
-            }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 700;
 
-            return Column(
-              children: [
-                cards[0],
-                const SizedBox(height: 12),
-                cards[1],
-                const SizedBox(height: 12),
-                cards[2],
-              ],
-            );
-          },
+        final cards = [
+          _OverviewCard(
+            title: 'Usuarios',
+            value: stats.totalUsers.toString(),
+            subtitle: 'Registrados',
+            icon: Icons.people_outline_rounded,
+          ),
+          _OverviewCard(
+            title: 'Eventos',
+            value: stats.totalEvents.toString(),
+            subtitle: 'Activos este mes',
+            icon: Icons.event_available_outlined,
+          ),
+          _OverviewCard(
+            title: 'Avisos',
+            value: stats.pendingNotifications.toString(),
+            subtitle: 'Pendientes de enviar',
+            icon: Icons.campaign_outlined,
+          ),
+        ];
+
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(child: cards[0]),
+              const SizedBox(width: 12),
+              Expanded(child: cards[1]),
+              const SizedBox(width: 12),
+              Expanded(child: cards[2]),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            cards[0],
+            const SizedBox(height: 12),
+            cards[1],
+            const SizedBox(height: 12),
+            cards[2],
+          ],
         );
       },
     );

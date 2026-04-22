@@ -24,6 +24,8 @@ class SocketService {
           .enableReconnection()
           .setReconnectionAttempts(20)
           .setReconnectionDelay(1000)
+          .setReconnectionDelayMax(5000)
+          .setTimeout(20000)
           .setAuth({
             'token': token,
           })
@@ -37,6 +39,14 @@ class SocketService {
 
     _socket!.onDisconnect((reason) {
       log('🔴 SOCKET DESCONECTADO: $reason');
+    });
+
+    _socket!.onReconnect((attempt) {
+      log('🔁 SOCKET RECONTECTADO en intento: $attempt');
+    });
+
+    _socket!.onReconnectAttempt((attempt) {
+      log('🔄 SOCKET RECONNECT ATTEMPT: $attempt');
     });
 
     _socket!.onConnectError((error) {
@@ -90,6 +100,8 @@ class SocketService {
       _socket!.off('disconnect');
       _socket!.off('connect_error');
       _socket!.off('error');
+      _socket!.off('reconnect');
+      _socket!.off('reconnect_attempt');
 
       _socket!.disconnect();
       _socket!.dispose();

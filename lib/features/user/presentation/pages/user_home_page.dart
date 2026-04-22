@@ -32,12 +32,13 @@ class UserHomePage extends ConsumerWidget {
                   8,
                 ),
                 child: _UserHeader(
-                  width: width,
-                  userName: authState.name,
-                ),
+  width: width,
+  userName: authState.name,
+  onLogoutTap: () => _showLogoutDialog(context, ref),
+),
               ),
             ),
-            SliverToBoxAdapter(
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: const SizedBox(height: 12),
@@ -48,7 +49,7 @@ class UserHomePage extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: const _UserOverviewSection(),
               ),
-            ),
+            ), */
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -75,7 +76,7 @@ class UserHomePage extends ConsumerWidget {
                       color: Color(0xFF2D4ECF),
                       route: '/mis-eventos',
                     ),
-                    _UserModuleCard(
+                    /* _UserModuleCard(
                       title: 'Calendario',
                       subtitle: 'Visualiza tus fechas programadas',
                       icon: Icons.calendar_month_outlined,
@@ -88,14 +89,14 @@ class UserHomePage extends ConsumerWidget {
                       icon: Icons.notifications_none_rounded,
                       color: Color(0xFF3557D6),
                       route: '/mis-eventos',
-                    ),
-                    _UserModuleCard(
+                    ), */
+                    /* _UserModuleCard(
                       title: 'Categorías',
                       subtitle: 'Consulta por tipo de evento',
                       icon: Icons.category_outlined,
                       color: Color(0xFF2D4ECF),
                       route: '/mis-eventos',
-                    ),
+                    ), */
                   ],
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -114,19 +115,19 @@ class UserHomePage extends ConsumerWidget {
                   horizontalPadding,
                   14,
                 ),
-                child: const _UserSectionTitle(
+                /* child: const _UserSectionTitle(
                   title: 'Acciones rápidas',
                   subtitle: 'Lo más usado por el usuario',
-                ),
+                ), */
               ),
             ),
-            SliverToBoxAdapter(
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: const _UserQuickActionsRow(),
               ),
-            ),
-            SliverToBoxAdapter(
+            ), */
+            /* SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -139,8 +140,8 @@ class UserHomePage extends ConsumerWidget {
                   subtitle: 'Resumen de tus últimos eventos',
                 ),
               ),
-            ),
-            SliverToBoxAdapter(
+            ), */
+            /*  SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
@@ -150,11 +151,11 @@ class UserHomePage extends ConsumerWidget {
                 ),
                 child: const _UserRecentActivityCard(),
               ),
-            ),
+            ), */
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      /* floatingActionButton: FloatingActionButton(
         elevation: 0,
         backgroundColor: const Color(0xFF2D4ECF),
         shape: RoundedRectangleBorder(
@@ -164,7 +165,7 @@ class UserHomePage extends ConsumerWidget {
           context.push('/mis-eventos');
         },
         child: const Icon(Icons.add, color: Colors.white),
-      ),
+      ), */
     );
   }
 }
@@ -172,10 +173,12 @@ class UserHomePage extends ConsumerWidget {
 class _UserHeader extends StatelessWidget {
   final double width;
   final String? userName;
+  final VoidCallback onLogoutTap;
 
   const _UserHeader({
     required this.width,
     required this.userName,
+    required this.onLogoutTap,
   });
 
   @override
@@ -189,83 +192,108 @@ class _UserHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF7F8FC),
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: const Color(0xFFE7EAF3),
+          width: 1,
+        ),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: -18,
-            right: -12,
-            child: _UserDecorBubble(
-              size: isSmall ? 62 : 74,
-              color: const Color(0xFF3557D6),
-              icon: Icons.event_note_outlined,
-            ),
-          ),
-          Positioned(
-            top: 38,
-            right: 54,
-            child: _UserDecorBubble(
-              size: isSmall ? 34 : 40,
-              color: const Color(0xFF4D6EF0),
-              icon: Icons.notifications_none_rounded,
-            ),
-          ),
-          Column(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: isSmall ? 52 : 58,
-                    height: isSmall ? 52 : 58,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+              Container(
+                width: isSmall ? 56 : 62,
+                height: isSmall ? 56 : 62,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2D4ECF).withOpacity(0.06),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: Color(0xFF2D4ECF),
-                      size: 28,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.logout_rounded,
-                        color: Color(0xFF2D4ECF),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Bienvenido $displayName',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF181A20),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: Color(0xFF2D4ECF),
+                  size: 30,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Gestiona tus eventos, recordatorios y próximas actividades desde un solo lugar.',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  height: 1.45,
-                  color: Color(0xFF8B90A0),
-                  fontWeight: FontWeight.w400,
-                ),
+              const Spacer(),
+              _UserHeaderActionButton(
+                icon: Icons.logout_rounded,
+                onTap: onLogoutTap,
               ),
             ],
           ),
+          const SizedBox(height: 22),
+          Text(
+            'Panel $displayName',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF181A20),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Gestiona tus eventos, recordatorios y próximas actividades desde un solo lugar.',
+            style: TextStyle(
+              fontSize: 14.5,
+              height: 1.45,
+              color: Color(0xFF8B90A0),
+              fontWeight: FontWeight.w400,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserHeaderActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _UserHeaderActionButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE7EAF3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2D4ECF).withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            color: const Color(0xFF2D4ECF),
+            size: 22,
+          ),
+        ),
       ),
     );
   }
@@ -553,27 +581,6 @@ class _UserQuickActionsRow extends StatelessWidget {
   }
 }
 
-class AdminDashboardStats {
-  final int totalUsers;
-  final int totalEvents;
-  final int pendingNotifications;
-
-  const AdminDashboardStats({
-    required this.totalUsers,
-    required this.totalEvents,
-    required this.pendingNotifications,
-  });
-
-  factory AdminDashboardStats.fromJson(Map<String, dynamic> json) {
-    return AdminDashboardStats(
-      totalUsers: int.tryParse('${json['totalUsers'] ?? 0}') ?? 0,
-      totalEvents: int.tryParse('${json['totalEvents'] ?? 0}') ?? 0,
-      pendingNotifications:
-          int.tryParse('${json['pendingNotifications'] ?? 0}') ?? 0,
-    );
-  }
-}
-
 class _UserQuickActionChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -797,4 +804,117 @@ class _UserDecorBubble extends StatelessWidget {
       ),
     );
   }
+}
+Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+  await showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) {
+      return AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF0FF),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFF2D4ECF),
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Cerrar sesión',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF181A20),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              '¿Quieres cerrar sesión?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF8B90A0),
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFE8EBF3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: Color(0xFF181A20),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D4ECF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await ref
+                            .read(authControllerProvider.notifier)
+                            .logout();
+
+                        if (context.mounted) {
+                          context.go('/login');
+                        }
+                      },
+                      child: const Text(
+                        'Aceptar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

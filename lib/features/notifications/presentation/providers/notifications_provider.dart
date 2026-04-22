@@ -69,10 +69,33 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
 
   void _listenSocket() {
     socketService.off('notification:new');
+    socketService.off('notification:history-updated');
 
     socketService.on('notification:new', (data) {
       final notification =
           NotificationModel.fromJson(Map<String, dynamic>.from(data));
+
+      final alreadyExists =
+          state.notifications.any((n) => n.id == notification.id);
+
+      if (alreadyExists) return;
+
+      final updatedList = [notification, ...state.notifications];
+
+      state = state.copyWith(
+        notifications: updatedList,
+        unreadCount: updatedList.where((n) => !n.read).length,
+      );
+    });
+
+    socketService.on('notification:history-updated', (data) {
+      final notification =
+          NotificationModel.fromJson(Map<String, dynamic>.from(data));
+
+      final alreadyExists =
+          state.notifications.any((n) => n.id == notification.id);
+
+      if (alreadyExists) return;
 
       final updatedList = [notification, ...state.notifications];
 
@@ -146,5 +169,16 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       );
       rethrow;
     }
+  }
+
+  void rebindSocketListeners() {
+    _listenSocket();
+  }
+
+  @override
+  void dispose() {
+    socketService.off('notification:new');
+    socketService.off('notification:history-updated');
+    super.dispose();
   }
 }

@@ -167,51 +167,53 @@ class UsersController extends StateNotifier<UsersState> {
   }
 
   Future<void> createUser({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-    required bool isActive,
-  }) async {
-    try {
-      final token = ref.read(authControllerProvider).token;
+  required String name,
+  required String email,
+  required String password,
+  required String role,
+  required bool isActive,
+}) async {
+  try {
+    final token = ref.read(authControllerProvider).token;
 
-      if (token == null || token.isEmpty) {
-        throw Exception('No existe token de sesión');
-      }
-
-      state = state.copyWith(
-        isCreating: true,
-        errorMessage: null,
-      );
-
-      await repository.createUser(
-        token: token,
-        name: name,
-        email: email,
-        password: password,
-        role: role,
-        isActive: isActive,
-      );
-
-      state = state.copyWith(
-        isCreating: false,
-      );
-    } catch (e) {
-      final message = e.toString();
-
-      if (message.contains('401|')) {
-        print('🔒 TOKEN EXPIRADO detectado en UsersController.createUser');
-        await ref.read(authControllerProvider.notifier).handleSessionExpired();
-      }
-
-      state = state.copyWith(
-        isCreating: false,
-        errorMessage: e.toString().replaceFirst('Exception: ', ''),
-      );
-      rethrow;
+    if (token == null || token.isEmpty) {
+      throw Exception('No existe token de sesión');
     }
+
+    state = state.copyWith(
+      isCreating: true,
+      errorMessage: null,
+    );
+
+    final createdUser = await repository.createUser(
+      token: token,
+      name: name,
+      email: email,
+      password: password,
+      role: role,
+      isActive: isActive,
+    );
+
+    _onUserCreated(createdUser);
+
+    state = state.copyWith(
+      isCreating: false,
+    );
+  } catch (e) {
+    final message = e.toString();
+
+    if (message.contains('401|')) {
+      print('🔒 TOKEN EXPIRADO detectado en UsersController.createUser');
+      await ref.read(authControllerProvider.notifier).handleSessionExpired();
+    }
+
+    state = state.copyWith(
+      isCreating: false,
+      errorMessage: e.toString().replaceFirst('Exception: ', ''),
+    );
+    rethrow;
   }
+}
 
   Future<void> updateUser({
     required String id,

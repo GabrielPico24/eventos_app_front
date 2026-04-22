@@ -816,86 +816,162 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
   }
 
   Future<void> _toggleEventoStatus(EventModel evento) async {
-    final nuevoEstado = !evento.isActive;
+  final nuevoEstado = !evento.isActive;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) {
+      return AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
-        title: Text(
-          nuevoEstado ? 'Activar evento' : 'Inactivar evento',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: Text(
-          nuevoEstado
-              ? '¿Deseas activar el evento "${evento.title}"?'
-              : '¿Deseas inactivar el evento "${evento.title}"?',
-          style: const TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2D4ECF),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF0FF),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                nuevoEstado
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.block_outlined,
+                color: const Color(0xFF2D4ECF),
+                size: 30,
               ),
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(nuevoEstado ? 'Activar' : 'Inactivar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      final authState = ref.read(authControllerProvider);
-      final token = authState.token ?? '';
-
-      if (token.isEmpty) {
-        throw Exception('Sesión no válida. Inicia sesión nuevamente');
-      }
-
-      await ref.read(eventsProvider.notifier).toggleEventStatus(
-            token: token,
-            id: evento.id,
-            isActive: nuevoEstado,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
+            const SizedBox(height: 18),
+            Text(
+              nuevoEstado ? 'Activar evento' : 'Inactivar evento',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF181A20),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
               nuevoEstado
-                  ? 'Evento activado correctamente'
-                  : 'Evento inactivado correctamente',
+                  ? '¿Deseas activar el evento "${evento.title}"?\nVolverá a mostrarse como disponible.'
+                  : '¿Deseas inactivar el evento "${evento.title}"?\nDejará de mostrarse como disponible.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF8B90A0),
+                height: 1.45,
+              ),
             ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString().replaceFirst('Exception: ', ''),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFE8EBF3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: Color(0xFF181A20),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D4ECF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(this.context);
+                        final navigator = Navigator.of(context);
+
+                        try {
+                          navigator.pop();
+
+                          final authState =
+                              ref.read(authControllerProvider);
+                          final token = authState.token ?? '';
+
+                          if (token.isEmpty) {
+                            throw Exception(
+                              'Sesión no válida. Inicia sesión nuevamente',
+                            );
+                          }
+
+                          await ref.read(eventsProvider.notifier).toggleEventStatus(
+                                token: token,
+                                id: evento.id,
+                                isActive: nuevoEstado,
+                              );
+
+                          if (!mounted) return;
+
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                nuevoEstado
+                                    ? 'Evento activado correctamente'
+                                    : 'Evento inactivado correctamente',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                e.toString().replaceFirst('Exception: ', ''),
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(
+                        nuevoEstado ? 'Activar' : 'Inactivar',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
+          ],
+        ),
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1136,11 +1212,11 @@ class _EventosHeader extends StatelessWidget {
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: onBack,
         ),
-        const Spacer(),
+/*         const Spacer(),
         _HeaderButton(
           icon: Icons.add_rounded,
           onTap: onAdd,
-        ),
+        ), */
       ],
     );
   }
