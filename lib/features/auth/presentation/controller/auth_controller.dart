@@ -231,6 +231,11 @@ class AuthController extends StateNotifier<AuthState> {
         token: response.accessToken,
       );
       await NotificationService.instance.requestPermissions();
+
+// Limpia notificaciones locales viejas que quedaron programadas
+// con la lógica anterior: "Evento mañana", "Evento en 1 hora", etc.
+      await NotificationService.instance.cancelAll();
+
       await _syncPushToken(response.accessToken);
     } catch (e) {
       state = state.copyWith(
@@ -363,6 +368,9 @@ class AuthController extends StateNotifier<AuthState> {
       ref.read(categoriesProvider.notifier).rebindSocketListeners();
       ref.read(usersControllerProvider.notifier).rebindSocketListeners();
 
+      // Limpia notificaciones locales viejas al restaurar sesión
+      await NotificationService.instance.cancelAll();
+
       await _syncPushToken(newAccessToken);
 
       return true;
@@ -453,6 +461,9 @@ class AuthController extends StateNotifier<AuthState> {
       ref.read(eventsProvider.notifier).rebindSocketListeners();
       ref.read(categoriesProvider.notifier).rebindSocketListeners();
       ref.read(usersControllerProvider.notifier).rebindSocketListeners();
+
+      // Limpia notificaciones locales viejas al renovar sesión
+      await NotificationService.instance.cancelAll();
 
       await _syncPushToken(newAccessToken);
 

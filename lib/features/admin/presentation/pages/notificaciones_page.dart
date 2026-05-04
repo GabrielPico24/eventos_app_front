@@ -754,15 +754,30 @@ class _ComposerCard extends StatelessWidget {
                       ? categorias.first
                       : categoriaSeleccionada,
                   isExpanded: true,
+                  dropdownColor: Colors.white,
+                  menuMaxHeight: 420,
+                  borderRadius: BorderRadius.circular(18),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF181A20),
+                    fontWeight: FontWeight.w500,
+                  ),
                   icon: const Icon(
                     Icons.keyboard_arrow_down_rounded,
                     color: Color(0xFF2D4ECF),
                   ),
                   items: categorias
                       .map(
-                        (categoria) => DropdownMenuItem(
+                        (categoria) => DropdownMenuItem<String>(
                           value: categoria,
-                          child: Text(categoria),
+                          child: Text(
+                            categoria,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF181A20),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       )
                       .toList(),

@@ -35,6 +35,7 @@ class EventModel {
   final String date;
   final String time;
   final String repeat;
+  final String repeatEndDate;
   final bool isActive;
   final String status;
   final String createdBy;
@@ -55,6 +56,7 @@ class EventModel {
     required this.date,
     required this.time,
     required this.repeat,
+    required this.repeatEndDate,
     required this.isActive,
     required this.status,
     required this.createdBy,
@@ -90,6 +92,7 @@ class EventModel {
       date: json['date']?.toString() ?? '',
       time: json['time']?.toString() ?? '',
       repeat: json['repeat']?.toString() ?? 'never',
+      repeatEndDate: json['repeatEndDate']?.toString() ?? '',
       isActive: json['isActive'] ?? true,
       status: json['status']?.toString() ?? 'upcoming',
       createdBy: createdByValue,
@@ -121,6 +124,7 @@ class EventModel {
       'date': date,
       'time': time,
       'repeat': repeat,
+      'repeatEndDate': repeatEndDate,
       'isActive': isActive,
       'status': status,
       'createdBy': createdBy,

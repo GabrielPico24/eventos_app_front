@@ -149,10 +149,10 @@ class AdminHomePage extends ConsumerWidget {
                   8,
                 ),
                 child: _AdminHeader(
-  width: width,
-  onLogoutTap: () => _showLogoutDialog(context, ref),
-  userName: authState.name ?? 'Administrador',
-),
+                  width: width,
+                  onLogoutTap: () => _showLogoutDialog(context, ref),
+                  userName: authState.name ?? 'Administrador',
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -512,7 +512,7 @@ class _OverviewSection extends ConsumerWidget {
           _OverviewCard(
             title: 'Avisos',
             value: stats.pendingNotifications.toString(),
-            subtitle: 'Pendientes de enviar',
+            subtitle: 'Programados por enviar',
             icon: Icons.campaign_outlined,
           ),
         ];

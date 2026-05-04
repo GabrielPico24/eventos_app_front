@@ -19,12 +19,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final location = state.matchedLocation;
 
-      // Mientras revisa sesión al iniciar, no redirigir aún
       if (authState.isCheckingStoredSession) {
         return null;
       }
 
-      // Si la sesión está bloqueada por biometría
       if (authState.isSessionLocked) {
         if (location != '/unlock') {
           return '/unlock';
@@ -32,7 +30,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Si no está autenticado -> login
       if (!authState.isAuthenticated) {
         if (location != '/login') {
           return '/login';
@@ -40,7 +37,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Si ya está autenticado y está en login o unlock, mandarlo a su home
       if (location == '/login' || location == '/unlock') {
         if (authState.role == UserRole.admin) {
           return '/home-admin';

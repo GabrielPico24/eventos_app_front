@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:event_app/features/auth/presentation/controller/auth_controller.dart';
 import 'package:event_app/features/categories/data/models/category_model.dart';
 import 'package:event_app/features/categories/presentation/providers/categories_provider.dart';
@@ -16,6 +17,7 @@ class MyEventsPage extends ConsumerStatefulWidget {
 class _MyEventsPageState extends ConsumerState<MyEventsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
+  Timer? _statusTimer;
 
   @override
   void initState() {
@@ -30,10 +32,16 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
       ref.read(categoriesProvider.notifier).loadCategories(token: token);
       ref.read(eventsProvider.notifier).loadMyEvents(token: token);
     });
+
+    _statusTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -65,14 +73,7 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
     {'value': 'quarterly', 'label': 'Cada 3 meses'},
     {'value': 'semiannual', 'label': 'Cada 6 meses'},
     {'value': 'yearly', 'label': 'Cada año'},
-    {'value': 'custom', 'label': 'Personalizado'},
   ];
-
-  String _repeatLabel(String value) {
-    final found = _repeatOptions.where((e) => e['value'] == value).toList();
-    if (found.isEmpty) return 'Nunca';
-    return found.first['label']!;
-  }
 
   Future<void> _openEventoDialog({
     EventModel? evento,
@@ -87,6 +88,10 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
         TextEditingController(text: isEdit ? evento.date : '');
     final horaController =
         TextEditingController(text: isEdit ? evento.time : '');
+
+    final repeatEndDateController = TextEditingController(
+      text: isEdit ? evento.repeatEndDate : '',
+    );
     String repetirSeleccionado = isEdit ? evento.repeat : 'never';
 
     bool activo = isEdit ? evento.isActive : true;
@@ -219,8 +224,7 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                   const SizedBox(height: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
+                                        horizontal: 16),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF7F8FC),
                                       borderRadius: BorderRadius.circular(18),
@@ -232,6 +236,9 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                       child: DropdownButton<String>(
                                         value: categoriaSeleccionadaId,
                                         isExpanded: true,
+                                        dropdownColor: Colors.white,
+                                        menuMaxHeight: 420,
+                                        borderRadius: BorderRadius.circular(18),
                                         icon: const Icon(
                                           Icons.keyboard_arrow_down_rounded,
                                           color: Color(0xFF2D4ECF),
@@ -239,11 +246,19 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                         items: categories.map((categoria) {
                                           return DropdownMenuItem<String>(
                                             value: categoria.id,
-                                            child: Text(categoria.name),
+                                            child: Text(
+                                              categoria.name,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                color: Color(0xFF181A20),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
                                           );
                                         }).toList(),
                                         onChanged: (value) {
                                           if (value == null) return;
+
                                           setModalState(() {
                                             categoriaSeleccionadaId = value;
                                           });
@@ -473,8 +488,8 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                   }),
                                                   dialTextStyle:
                                                       const TextStyle(
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                   entryModeIconColor:
                                                       const Color(0xFF2D4ECF),
@@ -507,20 +522,11 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                       if (picked != null) {
                                         final localizations =
                                             MaterialLocalizations.of(context);
+
                                         horaController.text =
                                             localizations.formatTimeOfDay(
                                           picked,
                                           alwaysUse24HourFormat: true,
-                                        );
-                                      }
-
-                                      if (picked != null) {
-                                        final localizations =
-                                            MaterialLocalizations.of(context);
-                                        horaController.text =
-                                            localizations.formatTimeOfDay(
-                                          picked,
-                                          alwaysUse24HourFormat: false,
                                         );
                                       }
                                     },
@@ -545,42 +551,252 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                         color: const Color(0xFFE8EBF3),
                                       ),
                                     ),
-                                    child: StatefulBuilder(
-                                      builder: (context, setLocalState) {
-                                        return DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: repetirSeleccionado,
-                                            isExpanded: true,
-                                            borderRadius:
-                                                BorderRadius.circular(18),
-                                            icon: const Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              color: Color(0xFF2D4ECF),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: repetirSeleccionado,
+                                        isExpanded: true,
+                                        dropdownColor: Colors.white,
+                                        menuMaxHeight: 520,
+                                        borderRadius: BorderRadius.circular(18),
+                                        icon: const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Color(0xFF2D4ECF),
+                                        ),
+                                        items: _repeatOptions.map((item) {
+                                          return DropdownMenuItem<String>(
+                                            value: item['value'],
+                                            child: Text(
+                                              item['label']!,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                color: Color(0xFF181A20),
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                            items: _repeatOptions.map((item) {
-                                              return DropdownMenuItem<String>(
-                                                value: item['value'],
-                                                child: Text(
-                                                  item['label']!,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    color: Color(0xFF181A20),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              );
-                                            }).toList(),
-                                            onChanged: (value) {
-                                              if (value == null) return;
-                                              setLocalState(() {
-                                                repetirSeleccionado = value;
-                                              });
-                                            },
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
+
+                                          setModalState(() {
+                                            repetirSeleccionado = value;
+
+                                            if (value == 'never') {
+                                              repeatEndDateController.clear();
+                                            }
+                                          });
+                                        },
+                                      ),
                                     ),
                                   ),
+                                  if (repetirSeleccionado != 'never') ...[
+                                    const SizedBox(height: 16),
+                                    const _InputLabel('Terminar Repetición'),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: repeatEndDateController,
+                                      readOnly: true,
+                                      decoration: _inputDecoration(
+                                        hint: 'Ej: 30/12/2026',
+                                        icon: Icons.event_available_outlined,
+                                      ),
+                                      onTap: () async {
+                                        DateTime initialDate = DateTime.now();
+
+                                        if (fechaController.text
+                                            .trim()
+                                            .isNotEmpty) {
+                                          final parts = fechaController.text
+                                              .trim()
+                                              .split('/');
+                                          if (parts.length == 3) {
+                                            final day = int.tryParse(parts[0]);
+                                            final month =
+                                                int.tryParse(parts[1]);
+                                            final year = int.tryParse(parts[2]);
+
+                                            if (day != null &&
+                                                month != null &&
+                                                year != null) {
+                                              initialDate =
+                                                  DateTime(year, month, day);
+                                            }
+                                          }
+                                        }
+
+                                        final picked = await showDatePicker(
+                                          context: context,
+                                          initialDate: initialDate,
+                                          firstDate: initialDate,
+                                          lastDate: DateTime(2100),
+                                          locale: const Locale('es', 'ES'),
+                                          builder: (context, child) {
+                                            return Theme(
+                                              data: Theme.of(context).copyWith(
+                                                colorScheme:
+                                                    const ColorScheme.light(
+                                                  primary: Color(0xFF2D4ECF),
+                                                  onPrimary: Colors.white,
+                                                  surface: Colors.white,
+                                                  onSurface: Color(0xFF181A20),
+                                                ),
+                                                dialogTheme:
+                                                    const DialogThemeData(
+                                                  backgroundColor: Colors.white,
+                                                  surfaceTintColor:
+                                                      Colors.white,
+                                                ),
+                                                textButtonTheme:
+                                                    TextButtonThemeData(
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        const Color(0xFF2D4ECF),
+                                                  ),
+                                                ),
+                                                datePickerTheme:
+                                                    DatePickerThemeData(
+                                                  backgroundColor: Colors.white,
+                                                  surfaceTintColor:
+                                                      Colors.white,
+                                                  headerBackgroundColor:
+                                                      Colors.white,
+                                                  headerForegroundColor:
+                                                      const Color(0xFF181A20),
+                                                  dayStyle: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  dayForegroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return Colors.white;
+                                                      }
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .disabled)) {
+                                                        return const Color(
+                                                            0xFFB8BFCC);
+                                                      }
+                                                      return const Color(
+                                                          0xFF181A20);
+                                                    },
+                                                  ),
+                                                  dayBackgroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return const Color(
+                                                            0xFF2D4ECF);
+                                                      }
+                                                      return null;
+                                                    },
+                                                  ),
+                                                  todayForegroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return Colors.white;
+                                                      }
+                                                      return const Color(
+                                                          0xFF2D4ECF);
+                                                    },
+                                                  ),
+                                                  todayBackgroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return const Color(
+                                                            0xFF2D4ECF);
+                                                      }
+                                                      return Colors.white;
+                                                    },
+                                                  ),
+                                                  todayBorder: const BorderSide(
+                                                    color: Color(0xFF2D4ECF),
+                                                    width: 1.5,
+                                                  ),
+                                                  yearForegroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return Colors.white;
+                                                      }
+                                                      return const Color(
+                                                          0xFF181A20);
+                                                    },
+                                                  ),
+                                                  yearBackgroundColor:
+                                                      WidgetStateProperty
+                                                          .resolveWith<Color?>(
+                                                    (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return const Color(
+                                                            0xFF2D4ECF);
+                                                      }
+                                                      return null;
+                                                    },
+                                                  ),
+                                                  cancelButtonStyle:
+                                                      const ButtonStyle(
+                                                    foregroundColor:
+                                                        WidgetStatePropertyAll(
+                                                            Color(0xFF2D4ECF)),
+                                                  ),
+                                                  confirmButtonStyle:
+                                                      const ButtonStyle(
+                                                    foregroundColor:
+                                                        WidgetStatePropertyAll(
+                                                            Color(0xFF2D4ECF)),
+                                                  ),
+                                                ),
+                                              ),
+                                              child: child!,
+                                            );
+                                          },
+                                        );
+
+                                        if (picked != null) {
+                                          final day = picked.day
+                                              .toString()
+                                              .padLeft(2, '0');
+                                          final month = picked.month
+                                              .toString()
+                                              .padLeft(2, '0');
+                                          final year = picked.year.toString();
+
+                                          repeatEndDateController.text =
+                                              '$day/$month/$year';
+                                        }
+                                      },
+                                      validator: (value) {
+                                        if (repetirSeleccionado != 'never' &&
+                                            (value == null ||
+                                                value.trim().isEmpty)) {
+                                          return 'Debes seleccionar hasta cuándo se repetirá el evento';
+                                        }
+
+                                        return null;
+                                      },
+                                    ),
+                                  ],
                                   const SizedBox(height: 16),
                                   const _InputLabel('Descripción'),
                                   const SizedBox(height: 8),
@@ -717,6 +933,13 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                     time: horaController.text
                                                         .trim(),
                                                     repeat: repetirSeleccionado,
+                                                    repeatEndDate:
+                                                        repetirSeleccionado ==
+                                                                'never'
+                                                            ? ''
+                                                            : repeatEndDateController
+                                                                .text
+                                                                .trim(),
                                                     isActive: activo,
                                                     assignedUsers: const [],
                                                   );
@@ -742,6 +965,13 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
                                                     time: horaController.text
                                                         .trim(),
                                                     repeat: repetirSeleccionado,
+                                                    repeatEndDate:
+                                                        repetirSeleccionado ==
+                                                                'never'
+                                                            ? ''
+                                                            : repeatEndDateController
+                                                                .text
+                                                                .trim(),
                                                     isActive: activo,
                                                     assignedUsers: const [],
                                                   );
@@ -816,162 +1046,163 @@ class _MyEventsPageState extends ConsumerState<MyEventsPage> {
   }
 
   Future<void> _toggleEventoStatus(EventModel evento) async {
-  final nuevoEstado = !evento.isActive;
+    final nuevoEstado = !evento.isActive;
 
-  showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (_) {
-      return AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF0FF),
-                borderRadius: BorderRadius.circular(18),
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF0FF),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  nuevoEstado
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.block_outlined,
+                  color: const Color(0xFF2D4ECF),
+                  size: 30,
+                ),
               ),
-              child: Icon(
+              const SizedBox(height: 18),
+              Text(
+                nuevoEstado ? 'Activar evento' : 'Inactivar evento',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF181A20),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
                 nuevoEstado
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.block_outlined,
-                color: const Color(0xFF2D4ECF),
-                size: 30,
+                    ? '¿Deseas activar el evento "${evento.title}"?\nVolverá a mostrarse como disponible.'
+                    : '¿Deseas inactivar el evento "${evento.title}"?\nDejará de mostrarse como disponible.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF8B90A0),
+                  height: 1.45,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              nuevoEstado ? 'Activar evento' : 'Inactivar evento',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF181A20),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              nuevoEstado
-                  ? '¿Deseas activar el evento "${evento.title}"?\nVolverá a mostrarse como disponible.'
-                  : '¿Deseas inactivar el evento "${evento.title}"?\nDejará de mostrarse como disponible.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF8B90A0),
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE8EBF3)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE8EBF3)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: Color(0xFF181A20),
-                          fontWeight: FontWeight.w700,
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Color(0xFF181A20),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D4ECF),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D4ECF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
-                      ),
-                      onPressed: () async {
-                        final messenger = ScaffoldMessenger.of(this.context);
-                        final navigator = Navigator.of(context);
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(this.context);
+                          final navigator = Navigator.of(context);
 
-                        try {
-                          navigator.pop();
+                          try {
+                            navigator.pop();
 
-                          final authState =
-                              ref.read(authControllerProvider);
-                          final token = authState.token ?? '';
+                            final authState = ref.read(authControllerProvider);
+                            final token = authState.token ?? '';
 
-                          if (token.isEmpty) {
-                            throw Exception(
-                              'Sesión no válida. Inicia sesión nuevamente',
+                            if (token.isEmpty) {
+                              throw Exception(
+                                'Sesión no válida. Inicia sesión nuevamente',
+                              );
+                            }
+
+                            await ref
+                                .read(eventsProvider.notifier)
+                                .toggleEventStatus(
+                                  token: token,
+                                  id: evento.id,
+                                  isActive: nuevoEstado,
+                                );
+
+                            if (!mounted) return;
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  nuevoEstado
+                                      ? 'Evento activado correctamente'
+                                      : 'Evento inactivado correctamente',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
                             );
                           }
-
-                          await ref.read(eventsProvider.notifier).toggleEventStatus(
-                                token: token,
-                                id: evento.id,
-                                isActive: nuevoEstado,
-                              );
-
-                          if (!mounted) return;
-
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                nuevoEstado
-                                    ? 'Evento activado correctamente'
-                                    : 'Evento inactivado correctamente',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        } catch (e) {
-                          if (!mounted) return;
-
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                e.toString().replaceFirst('Exception: ', ''),
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                      child: Text(
-                        nuevoEstado ? 'Activar' : 'Inactivar',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
+                        },
+                        child: Text(
+                          nuevoEstado ? 'Activar' : 'Inactivar',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1538,9 +1769,9 @@ class _EventoCard extends StatelessWidget {
                     : const Color(0xFFF0F2F7),
               ),
               _InfoBadge(
-                label: _buildStatusLabel(evento.status),
-                color: const Color(0xFF3557D6),
-                background: const Color(0xFFEAF0FF),
+                label: _buildRealStatusLabel(evento),
+                color: _buildRealStatusColor(evento),
+                background: _buildRealStatusBackground(evento),
               ),
             ],
           ),
@@ -1607,6 +1838,29 @@ class _EventoCard extends StatelessWidget {
               ),
             ],
           ),
+          if (evento.repeat != 'never' && evento.repeatEndDate.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.event_available_outlined,
+                  size: 18,
+                  color: Color(0xFF2D4ECF),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Termina: ${evento.repeatEndDate}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF59627A),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1706,16 +1960,171 @@ class _InputLabel extends StatelessWidget {
   }
 }
 
-String _buildStatusLabel(String status) {
-  switch (status.toLowerCase()) {
-    case 'upcoming':
-      return 'Próximo';
-    case 'completed':
-      return 'Completado';
-    case 'cancelled':
-      return 'Cancelado';
+DateTime? _parseEventDateTimeForStatus(String date, String time) {
+  try {
+    final normalizedDate = date.trim();
+    final normalizedTime = time.trim().toUpperCase();
+
+    late int day;
+    late int month;
+    late int year;
+
+    if (normalizedDate.contains('/')) {
+      final parts = normalizedDate.split('/');
+      if (parts.length != 3) return null;
+
+      day = int.parse(parts[0]);
+      month = int.parse(parts[1]);
+      year = int.parse(parts[2]);
+    } else if (normalizedDate.contains('-')) {
+      final parts = normalizedDate.split('-');
+      if (parts.length != 3) return null;
+
+      year = int.parse(parts[0]);
+      month = int.parse(parts[1]);
+      day = int.parse(parts[2]);
+    } else {
+      return null;
+    }
+
+    int hour = 0;
+    int minute = 0;
+
+    if (normalizedTime.contains('AM') || normalizedTime.contains('PM')) {
+      final clean = normalizedTime.replaceAll(' ', '');
+      final isPm = clean.contains('PM');
+
+      final timeOnly = clean.replaceAll('AM', '').replaceAll('PM', '');
+      final timeParts = timeOnly.split(':');
+
+      hour = int.parse(timeParts[0]);
+      minute = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
+
+      if (isPm && hour != 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+    } else {
+      final timeParts = normalizedTime.split(':');
+
+      hour = int.parse(timeParts[0]);
+      minute = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
+    }
+
+    return DateTime(year, month, day, hour, minute);
+  } catch (_) {
+    return null;
+  }
+}
+
+DateTime? _parseRepeatEndOfDayForStatus(String date) {
+  try {
+    final normalizedDate = date.trim();
+
+    late int day;
+    late int month;
+    late int year;
+
+    if (normalizedDate.contains('/')) {
+      final parts = normalizedDate.split('/');
+      if (parts.length != 3) return null;
+
+      day = int.parse(parts[0]);
+      month = int.parse(parts[1]);
+      year = int.parse(parts[2]);
+    } else if (normalizedDate.contains('-')) {
+      final parts = normalizedDate.split('-');
+      if (parts.length != 3) return null;
+
+      year = int.parse(parts[0]);
+      month = int.parse(parts[1]);
+      day = int.parse(parts[2]);
+    } else {
+      return null;
+    }
+
+    return DateTime(year, month, day, 23, 59, 59, 999);
+  } catch (_) {
+    return null;
+  }
+}
+
+String _buildRealStatusLabel(EventModel evento) {
+  final status = evento.status.toLowerCase().trim();
+
+  if (status == 'cancelled') {
+    return 'Cancelado';
+  }
+
+  if (!evento.isActive) {
+    return 'Inactivo';
+  }
+
+  final now = DateTime.now();
+
+  final eventDateTime = _parseEventDateTimeForStatus(
+    evento.date,
+    evento.time,
+  );
+
+  if (eventDateTime == null) {
+    return 'Próximo';
+  }
+
+  if (evento.repeat == 'never') {
+    return now.isAfter(eventDateTime) || now.isAtSameMomentAs(eventDateTime)
+        ? 'Completado'
+        : 'Próximo';
+  }
+
+  if (now.isBefore(eventDateTime)) {
+    return 'Próximo';
+  }
+
+  if (evento.repeatEndDate.trim().isEmpty) {
+    return 'En proceso';
+  }
+
+  final repeatEndDateTime = _parseRepeatEndOfDayForStatus(
+    evento.repeatEndDate,
+  );
+
+  if (repeatEndDateTime == null) {
+    return 'En proceso';
+  }
+
+  return now.isAfter(repeatEndDateTime) ? 'Completado' : 'En proceso';
+}
+
+Color _buildRealStatusColor(EventModel evento) {
+  final label = _buildRealStatusLabel(evento);
+
+  switch (label) {
+    case 'Completado':
+      return const Color(0xFF16A34A);
+    case 'En proceso':
+      return const Color(0xFFF59E0B);
+    case 'Cancelado':
+      return const Color(0xFFDC2626);
+    case 'Inactivo':
+      return const Color(0xFF9EA4B5);
     default:
-      return status;
+      return const Color(0xFF3557D6);
+  }
+}
+
+Color _buildRealStatusBackground(EventModel evento) {
+  final label = _buildRealStatusLabel(evento);
+
+  switch (label) {
+    case 'Completado':
+      return const Color(0xFFEAFBF0);
+    case 'En proceso':
+      return const Color(0xFFFFF7E6);
+    case 'Cancelado':
+      return const Color(0xFFFFEAEA);
+    case 'Inactivo':
+      return const Color(0xFFF0F2F7);
+    default:
+      return const Color(0xFFEAF0FF);
   }
 }
 
@@ -1743,8 +2152,6 @@ String _buildRepeatLabel(String value) {
       return 'Cada 6 meses';
     case 'yearly':
       return 'Cada año';
-    case 'custom':
-      return 'Personalizado';
     default:
       return 'Nunca';
   }

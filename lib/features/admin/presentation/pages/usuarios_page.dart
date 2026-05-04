@@ -198,6 +198,9 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                               child: DropdownButton<String>(
                                 value: rolSeleccionado,
                                 isExpanded: true,
+                                dropdownColor: Colors.white,
+                                menuMaxHeight: 260,
+                                borderRadius: BorderRadius.circular(18),
                                 icon: const Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   color: Color(0xFF2D4ECF),
@@ -205,11 +208,25 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                                 items: const [
                                   DropdownMenuItem(
                                     value: 'Administrador',
-                                    child: Text('Administrador'),
+                                    child: Text(
+                                      'Administrador',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Color(0xFF181A20),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'Usuario',
-                                    child: Text('Usuario'),
+                                    child: Text(
+                                      'Usuario',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Color(0xFF181A20),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (value) {

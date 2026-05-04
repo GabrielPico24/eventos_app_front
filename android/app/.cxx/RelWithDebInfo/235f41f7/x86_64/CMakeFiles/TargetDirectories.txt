@@ -1,0 +1,2 @@
+/Users/kgabriel/Desktop/EVENTOS APP/eventos_app_front/android/app/.cxx/RelWithDebInfo/235f41f7/x86_64/CMakeFiles/edit_cache.dir
+/Users/kgabriel/Desktop/EVENTOS APP/eventos_app_front/android/app/.cxx/RelWithDebInfo/235f41f7/x86_64/CMakeFiles/rebuild_cache.dir
